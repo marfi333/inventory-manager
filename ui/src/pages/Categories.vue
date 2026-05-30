@@ -11,7 +11,7 @@
     </div>
 
     <div
-      class="flex flex-col gap-4 p-4 bg-white border rounded-lg shadow-sm sm:flex-row sm:items-center sm:justify-between dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+      class="sticky top-0 z-10 flex flex-col gap-4 p-4 bg-white border rounded-lg shadow-sm sm:flex-row sm:items-center sm:justify-between dark:bg-slate-800 border-slate-200 dark:border-slate-700"
     >
       <div class="flex-1 max-w-md">
         <div class="relative">
@@ -47,103 +47,126 @@
     <!-- Mobile Cards (< 768px) -->
     <div v-else>
       <div class="md:hidden">
-        <div v-if="filteredCategories.length === 0" class="py-12 text-center">
-          <div
-            class="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-slate-100 dark:bg-slate-700"
-          >
-            <i class="text-2xl pi pi-search text-slate-400 dark:text-slate-500"></i>
-          </div>
-          <p class="text-lg font-medium text-slate-900 dark:text-white">No categories found</p>
-          <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            {{ searchQuery ? `No results for "${searchQuery}"` : 'No categories available' }}
-          </p>
-          <Button v-if="searchQuery" label="Clear search" icon="pi pi-times" @click="clearSearch" text class="mt-4" />
-        </div>
-
-        <div v-else class="space-y-4">
-          <div
-            v-for="category in paginatedCategories"
-            :key="category.id"
-            class="transition-all duration-200 bg-white border rounded-lg shadow-sm dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:shadow-md"
-          >
-            <div class="p-4">
-              <div class="flex items-start justify-between mb-3">
-                <div class="flex items-center">
-                  <div
-                    class="flex items-center justify-center w-10 h-10 mr-3 bg-indigo-100 rounded-lg dark:bg-indigo-900/50"
-                  >
-                    <i class="text-indigo-600 pi pi-folder dark:text-indigo-400"></i>
-                  </div>
-                  <div>
-                    <h3
-                      class="font-semibold text-slate-900 dark:text-white"
-                      v-html="highlightSearchTerm(category.name, searchQuery)"
-                    ></h3>
-                    <p class="text-sm text-slate-500 dark:text-slate-400">
-                      {{ new Date(category.createdAt).toLocaleDateString() }}
-                    </p>
-                  </div>
-                </div>
-
-                <div class="flex items-center space-x-2">
-                  <Button
-                    icon="pi pi-pencil"
-                    severity="secondary"
-                    size="small"
-                    @click="editCategory(category)"
-                    class="!w-8 !h-8 !p-0"
-                    :pt="{
-                      root: 'dark:bg-gray-600',
-                    }"
-                  />
-                  <Button
-                    icon="pi pi-trash"
-                    severity="danger"
-                    size="small"
-                    @click="confirmDelete(category)"
-                    class="!w-8 !h-8 !p-0"
-                  />
-                </div>
+        <PullToRefresh ref="pullToRefreshRef" @refresh="onRefresh">
+          <div v-if="filteredCategories.length === 0" class="py-12 text-center">
+            <div v-if="categories.length === 0 && !searchQuery" class="max-w-sm mx-auto p-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm">
+              <div class="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-indigo-100 dark:bg-indigo-900/50">
+                <i class="text-2xl pi pi-folder text-indigo-600 dark:text-indigo-400"></i>
               </div>
-
-              <div class="pt-3 mt-3 border-t border-slate-100 dark:border-slate-700">
-                <p
-                  class="text-sm text-slate-600 dark:text-slate-400"
-                  v-html="highlightSearchTerm(category.description || 'No description', searchQuery)"
-                ></p>
+              <p class="text-lg font-medium text-slate-900 dark:text-white">Add your first category</p>
+              <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Organize your inventory by creating a category.</p>
+              <Button label="Add Category" icon="pi pi-plus" @click="showCreateDialog" class="mt-4" />
+            </div>
+            <div v-else>
+              <div class="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-slate-100 dark:bg-slate-700">
+                <i class="text-2xl pi pi-search text-slate-400 dark:text-slate-500"></i>
               </div>
+              <p class="text-lg font-medium text-slate-900 dark:text-white">No categories found</p>
+              <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                {{ searchQuery ? `No results for "${searchQuery}"` : 'No categories available' }}
+              </p>
+              <Button v-if="searchQuery" label="Clear search" icon="pi pi-times" @click="clearSearch" text class="mt-4" />
             </div>
           </div>
-        </div>
 
-        <div v-if="filteredCategories.length > 0" class="flex items-center justify-between px-4 mt-6">
-          <div class="text-sm text-slate-500 dark:text-slate-400">
-            Showing {{ (currentPage - 1) * itemsPerPage + 1 }} to
-            {{ Math.min(currentPage * itemsPerPage, filteredCategories.length) }} of
-            {{ filteredCategories.length }} categories
+          <div v-else class="space-y-3">
+            <SwipeList
+              :items="paginatedCategories"
+              item-key="id"
+              class="swipe-list"
+            >
+              <template #default="{ item }">
+                <div
+                  class="bg-white border rounded-lg shadow-sm dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                >
+                  <div v-if="confirmingDeleteId === item.id" class="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                    <div class="flex items-center justify-between">
+                      <span class="text-sm font-medium text-red-700 dark:text-red-300">
+                        Delete "{{ item.name }}"?
+                      </span>
+                      <div class="flex items-center space-x-2">
+                        <Button label="Cancel" size="small" text @click="cancelDelete" />
+                        <Button label="Delete" size="small" severity="danger" :loading="deleting" @click="deleteCategory" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div v-else class="p-4">
+                    <div class="flex items-start justify-between mb-3">
+                      <div class="flex items-center">
+                        <div
+                          class="flex items-center justify-center w-10 h-10 mr-3 bg-indigo-100 rounded-lg dark:bg-indigo-900/50"
+                        >
+                          <i class="text-indigo-600 pi pi-folder dark:text-indigo-400"></i>
+                        </div>
+                        <div>
+                          <h3
+                            class="font-semibold text-slate-900 dark:text-white"
+                            v-html="highlightSearchTerm(item.name, searchQuery)"
+                          ></h3>
+                          <p class="text-sm text-slate-500 dark:text-slate-400">
+                            {{ new Date(item.createdAt).toLocaleDateString() }}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="pt-3 mt-3 border-t border-slate-100 dark:border-slate-700">
+                      <p
+                        class="text-sm text-slate-600 dark:text-slate-400"
+                        v-html="highlightSearchTerm(item.description || 'No description', searchQuery)"
+                      ></p>
+                    </div>
+                  </div>
+                </div>
+              </template>
+
+              <template #right="{ item }">
+                <div class="flex h-full">
+                  <button
+                    @click="editCategory(item)"
+                    class="flex items-center justify-center w-16 bg-blue-500 text-white"
+                  >
+                    <i class="pi pi-pencil"></i>
+                  </button>
+                  <button
+                    @click="confirmDelete(item)"
+                    class="flex items-center justify-center w-16 bg-red-500 text-white"
+                  >
+                    <i class="pi pi-trash"></i>
+                  </button>
+                </div>
+              </template>
+            </SwipeList>
           </div>
-          <div class="flex items-center space-x-2">
-            <Button
-              icon="pi pi-chevron-left"
-              severity="secondary"
-              size="small"
-              :disabled="currentPage === 1"
-              @click="currentPage--"
-              class="!w-8 !h-8 !p-0"
-            />
-            <span class="text-sm font-medium text-slate-900 dark:text-white">
-              {{ currentPage }} / {{ totalPages }}
-            </span>
-            <Button
-              icon="pi pi-chevron-right"
-              severity="secondary"
-              size="small"
-              :disabled="currentPage === totalPages"
-              @click="currentPage++"
-              class="!w-8 !h-8 !p-0"
-            />
+
+          <div v-if="filteredCategories.length > 0" class="flex items-center justify-between px-4 mt-6">
+            <div class="text-sm text-slate-500 dark:text-slate-400">
+              {{ (currentPage - 1) * itemsPerPage + 1 }}-{{ Math.min(currentPage * itemsPerPage, filteredCategories.length) }} of {{ filteredCategories.length }}
+            </div>
+            <div class="flex items-center space-x-2">
+              <Button
+                icon="pi pi-chevron-left"
+                severity="secondary"
+                size="small"
+                :disabled="currentPage === 1"
+                @click="currentPage--"
+                class="!w-8 !h-8 !p-0"
+              />
+              <span class="text-sm font-medium text-slate-900 dark:text-white">
+                {{ currentPage }} / {{ totalPages }}
+              </span>
+              <Button
+                icon="pi pi-chevron-right"
+                severity="secondary"
+                size="small"
+                :disabled="currentPage === totalPages"
+                @click="currentPage++"
+                class="!w-8 !h-8 !p-0"
+              />
+            </div>
           </div>
-        </div>
+        </PullToRefresh>
       </div>
 
       <!-- Desktop Table (>= 768px) -->
@@ -203,7 +226,12 @@
 
               <Column header="Actions" class="px-6 py-4">
                 <template #body="{ data }">
-                  <div class="flex items-center space-x-2">
+                  <div v-if="confirmingDeleteId === data.id" class="flex items-center space-x-2">
+                    <span class="text-sm text-red-600 dark:text-red-400">Delete?</span>
+                    <Button label="Yes" size="small" severity="danger" :loading="deleting" @click="deleteCategory" />
+                    <Button label="No" size="small" text @click="cancelDelete" />
+                  </div>
+                  <div v-else class="flex items-center space-x-2">
                     <Button
                       icon="pi pi-pencil"
                       severity="secondary"
@@ -230,19 +258,9 @@
       </div>
     </div>
 
-    <Dialog
-      v-model:visible="dialogVisible"
+    <BottomDrawer
+      v-model="dialogVisible"
       :header="dialogMode === 'create' ? 'Create Category' : 'Edit Category'"
-      :style="{ width: '90vw', maxWidth: '450px' }"
-      :modal="true"
-      class="p-fluid"
-      :pt="{
-        root: 'bg-white dark:bg-slate-800',
-        header:
-          'bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white',
-        content: 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white',
-        footer: 'bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700',
-      }"
     >
       <form @submit.prevent="saveCategory" class="space-y-4">
         <div>
@@ -276,52 +294,20 @@
             }"
           />
         </div>
+      </form>
 
-        <div class="flex justify-end pt-4 space-x-3">
+      <template #footer>
+        <div class="flex justify-end space-x-3">
           <Button label="Cancel" icon="pi pi-times" @click="dialogVisible = false" text />
           <Button
             :label="dialogMode === 'create' ? 'Create' : 'Update'"
             icon="pi pi-check"
-            type="submit"
+            @click="saveCategory"
             :loading="saving"
           />
         </div>
-      </form>
-    </Dialog>
-
-    <Dialog
-      v-model:visible="deleteDialogVisible"
-      header="Confirm Delete"
-      :style="{ width: '90vw', maxWidth: '450px' }"
-      :modal="true"
-      :pt="{
-        root: 'bg-white dark:bg-slate-800',
-        header:
-          'bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white',
-        content: 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white',
-        footer: 'bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700',
-      }"
-    >
-      <div class="flex items-center space-x-3">
-        <div class="flex items-center justify-center w-10 h-10 bg-red-100 rounded-full dark:bg-red-900/50">
-          <i class="text-red-600 pi pi-exclamation-triangle dark:text-red-400"></i>
-        </div>
-        <div>
-          <p class="text-sm font-medium text-slate-900 dark:text-white">Delete Category</p>
-          <p class="text-sm text-slate-600 dark:text-slate-400" v-if="categoryToDelete">
-            Are you sure you want to delete <strong>{{ categoryToDelete.name }}</strong
-            >?
-          </p>
-        </div>
-      </div>
-
-      <template #footer>
-        <div class="flex justify-end mt-3 space-x-3">
-          <Button label="Cancel" icon="pi pi-times" @click="deleteDialogVisible = false" text />
-          <Button label="Delete" icon="pi pi-trash" @click="deleteCategory" :loading="deleting" severity="danger" />
-        </div>
       </template>
-    </Dialog>
+    </BottomDrawer>
   </div>
 </template>
 
@@ -331,9 +317,12 @@ import { useToast } from 'primevue/usetoast'
 import Button from 'primevue/button'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
-import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
+import { SwipeList } from '@ahultgren/vue3-swipe-actions'
+import '@ahultgren/vue3-swipe-actions/dist/style.css'
+import BottomDrawer from '../components/BottomDrawer.vue'
+import PullToRefresh from '../components/PullToRefresh.vue'
 import { apiService } from '../services/api'
 import type { Category, CreateCategoryRequest, UpdateCategoryRequest } from '../types'
 
@@ -344,10 +333,10 @@ const saving = ref(false)
 const deleting = ref(false)
 const categories = ref<Category[]>([])
 const dialogVisible = ref(false)
-const deleteDialogVisible = ref(false)
 const dialogMode = ref<'create' | 'edit'>('create')
-const categoryToDelete = ref<Category | null>(null)
 const selectedCategory = ref<Category | null>(null)
+const confirmingDeleteId = ref<string | null>(null)
+const pullToRefreshRef = ref<InstanceType<typeof PullToRefresh>>()
 
 const currentPage = ref(1)
 const itemsPerPage = ref(10)
@@ -484,16 +473,19 @@ const saveCategory = async () => {
 }
 
 const confirmDelete = (category: Category) => {
-  categoryToDelete.value = category
-  deleteDialogVisible.value = true
+  confirmingDeleteId.value = category.id
+}
+
+const cancelDelete = () => {
+  confirmingDeleteId.value = null
 }
 
 const deleteCategory = async () => {
-  if (!categoryToDelete.value) return
+  if (!confirmingDeleteId.value) return
 
   try {
     deleting.value = true
-    await apiService.deleteCategory(categoryToDelete.value.id)
+    await apiService.deleteCategory(confirmingDeleteId.value)
 
     toast.add({
       severity: 'success',
@@ -502,7 +494,7 @@ const deleteCategory = async () => {
       life: 3000,
     })
 
-    deleteDialogVisible.value = false
+    confirmingDeleteId.value = null
     await loadCategories()
   } catch (error) {
     console.error('Error deleting category:', error)
@@ -515,6 +507,11 @@ const deleteCategory = async () => {
   } finally {
     deleting.value = false
   }
+}
+
+const onRefresh = async () => {
+  await loadCategories()
+  pullToRefreshRef.value?.done()
 }
 
 const clearSearch = () => {
@@ -533,6 +530,12 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.swipe-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
 .custom-datatable :deep(.p-datatable) {
   border-radius: 8px;
   overflow: hidden;
