@@ -122,3 +122,11 @@ app.use(PrimeVue, {
 app.directive('tooltip', Tooltip)
 
 app.mount('#app')
+
+const splash = document.getElementById('app-splash')
+if (splash) {
+  requestAnimationFrame(() => {
+    splash.classList.add('is-hidden')
+    splash.addEventListener('transitionend', () => splash.remove(), { once: true })
+  })
+}

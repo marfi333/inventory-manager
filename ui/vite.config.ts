@@ -18,6 +18,9 @@ export default defineConfig({
       },
       injectManifest: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2,ttf,eot}'],
+        // iOS-only launch images; loaded at PWA install/launch, not in-app.
+        // Excluding them keeps the precache small.
+        globIgnores: ['**/splash/**'],
       },
       includeAssets: [
         'favicon.ico',
