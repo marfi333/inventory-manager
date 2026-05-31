@@ -77,33 +77,50 @@ export async function findFailedForResource(
 }
 
 /**
- * When an offline create resolves and the server assigns a real id, any
- * queued mutations that referenced the temporary clientId need to be rewritten
- * so they target the server-assigned resource. Walks the outbox and patches
- * url / body / resourceId in-place.
+ * When an offline create resolves and the server assigns a real id, every
+ * queued mutation that references the temporary clientId — anywhere in url,
+ * body, or its own resourceId/clientId — needs to be rewritten. We walk the
+ * full outbox (not just same-resource entries), because an offline-created
+ * category's id can show up in an offline-created item's body.categoryId
+ * even though that item mutation has its own distinct clientId.
  */
 export async function rewriteClientId(
   clientId: string,
   serverId: string,
   resource: OutboxMutation['resource']
 ): Promise<void> {
-  const affected = await db.mutations.where('clientId').equals(clientId).toArray()
+  const all = await db.mutations.toArray()
   await db.transaction('rw', db.mutations, async () => {
-    for (const m of affected) {
-      if (m.resource !== resource || m.id === undefined) continue
-      const newUrl = m.url.includes(clientId) ? m.url.replace(clientId, serverId) : m.url
+    for (const m of all) {
+      if (m.id === undefined) continue
+      const ownsClientId = m.resource === resource && m.clientId === clientId
+      const urlMentions = m.url.includes(clientId)
+      const bodyMentions =
+        m.body && typeof m.body === 'object' && m.body !== null
+          ? bodyContainsId(m.body as Record<string, unknown>, clientId)
+          : false
+      if (!ownsClientId && !urlMentions && !bodyMentions) continue
+
+      const newUrl = urlMentions ? m.url.replaceAll(clientId, serverId) : m.url
       const newBody =
         m.body && typeof m.body === 'object' && m.body !== null
           ? rewriteBodyIds(m.body as Record<string, unknown>, clientId, serverId)
           : m.body
-      await db.mutations.update(m.id, {
-        url: newUrl,
-        body: newBody,
-        resourceId: serverId,
-        clientId: undefined,
-      })
+      const patch: Partial<OutboxMutation> = { url: newUrl, body: newBody }
+      if (ownsClientId) {
+        patch.resourceId = serverId
+        patch.clientId = undefined
+      }
+      await db.mutations.update(m.id, patch)
     }
   })
+}
+
+function bodyContainsId(body: Record<string, unknown>, id: string): boolean {
+  for (const v of Object.values(body)) {
+    if (v === id) return true
+  }
+  return false
 }
 
 function rewriteBodyIds(
@@ -116,4 +133,13 @@ function rewriteBodyIds(
     if (out[key] === clientId) out[key] = serverId
   }
   return out
+}
+
+/**
+ * Permanently drop a failed (or any) mutation from the outbox. Used when a
+ * mutation will never succeed (e.g. an offline create against a category that
+ * was itself discarded) and the user wants to clear it from the queue.
+ */
+export async function discard(id: number): Promise<void> {
+  await db.mutations.delete(id)
 }

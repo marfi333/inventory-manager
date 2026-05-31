@@ -42,15 +42,28 @@
           </p>
         </div>
 
-        <Button
+        <div
           v-if="m.status === 'failed' && m.id !== undefined"
-          @click="onRetry(m.id)"
-          size="small"
-          severity="secondary"
-          outlined
+          class="flex items-center gap-2 flex-shrink-0"
         >
-          Retry
-        </Button>
+          <Button
+            @click="onRetry(m.id)"
+            size="small"
+            severity="secondary"
+            outlined
+          >
+            Retry
+          </Button>
+          <Button
+            @click="onDiscard(m)"
+            size="small"
+            severity="danger"
+            outlined
+            v-tooltip.left="'Discard this change'"
+          >
+            Discard
+          </Button>
+        </div>
       </li>
     </ul>
   </BottomDrawer>
@@ -62,7 +75,7 @@ import BottomDrawer from './BottomDrawer.vue'
 import { db } from '../services/db'
 import type { OutboxMutation } from '../types/db'
 import { useLiveQuery } from '../composables/useLiveQuery'
-import { retryMutation } from '../composables/useSyncQueue'
+import { discardMutation, retryMutation } from '../composables/useSyncQueue'
 
 const model = defineModel<boolean>({ required: true })
 
@@ -95,5 +108,10 @@ function relativeTime(ts: number): string {
 
 async function onRetry(id: number) {
   await retryMutation(id)
+}
+
+async function onDiscard(m: OutboxMutation) {
+  if (m.id === undefined) return
+  await discardMutation(m)
 }
 </script>

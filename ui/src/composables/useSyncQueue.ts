@@ -12,6 +12,7 @@ import {
 } from '../services/cache'
 import { db } from '../services/db'
 import {
+  discard as discardOutbox,
   markFailed,
   markInFlight,
   markSynced,
@@ -149,6 +150,39 @@ async function describeMutation(mutation: OutboxMutation): Promise<string> {
 export async function retryMutation(id: number): Promise<void> {
   await retryOutbox(id)
   void drainQueue()
+}
+
+/**
+ * Permanently drop a failed mutation. Cleans up the linked cache row so the
+ * UI doesn't keep showing it:
+ *   - failed CREATE: remove the orphan optimistic row keyed by clientId
+ *   - failed UPDATE/PATCH: clear the dirty marker on the existing row by
+ *     re-writing it with `_syncStatus: 'synced'`. The local copy may now
+ *     diverge from the server until the next GET refresh, which is the
+ *     accepted trade-off for "discard my offline change".
+ *   - failed DELETE: same as UPDATE — the row is still in the cache; mark
+ *     it synced so the user sees the row reappear cleanly.
+ */
+export async function discardMutation(mutation: OutboxMutation): Promise<void> {
+  if (mutation.id === undefined) return
+
+  if (mutation.method === 'POST' && mutation.clientId) {
+    if (mutation.resource === 'item') {
+      await deleteCachedItem(mutation.clientId)
+    } else {
+      await deleteCachedCategory(mutation.clientId)
+    }
+  } else if (mutation.resourceId) {
+    if (mutation.resource === 'item') {
+      const existing = await getCachedItem(mutation.resourceId)
+      if (existing) await putCachedItem(existing, 'synced')
+    } else {
+      const existing = await getCachedCategory(mutation.resourceId)
+      if (existing) await putCachedCategory(existing, 'synced')
+    }
+  }
+
+  await discardOutbox(mutation.id)
 }
 
 export function useSyncQueue() {
