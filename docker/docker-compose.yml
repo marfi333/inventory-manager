@@ -12,18 +12,22 @@ services:
       - NODE_ENV=production
     volumes:
       - api_data:/app/api/data
+    networks:
+      - app-network
 
   ui:
     build:
       context: ..
       dockerfile: docker/ui.Dockerfile
       args:
-        - VITE_API_URL=http://localhost:3001/api
+        - VITE_API_URL=/api
     platform: linux/amd64
-    environment:
-      - VITE_API_URL=http://localhost:3001/api
     ports:
       - '8080:8080'
+    depends_on:
+      - api
+    networks:
+      - app-network
 
 volumes:
   api_data:

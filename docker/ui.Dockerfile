@@ -1,9 +1,9 @@
-FROM node:24.2.0-slim AS builder
+FROM node:20-slim AS builder
 
-ARG VITE_API_URL
+ARG VITE_API_URL=/api
 ENV VITE_API_URL=$VITE_API_URL
 
-RUN npm install -g pnpm
+RUN corepack enable && corepack prepare pnpm@10.12.0 --activate
 
 WORKDIR /build
 
@@ -20,4 +20,4 @@ COPY docker/nginx.conf /etc/nginx/nginx.conf
 
 EXPOSE 8080
 
-CMD ["nginx", "-g", "daemon off;"] 
+CMD ["nginx", "-g", "daemon off;"]

@@ -76,6 +76,38 @@ A full-stack inventory management system built with **Hono** and **Vue 3** with 
    pnpm build:ui
    ```
 
+## Deployment
+
+### Local Docker (development)
+
+The `docker/` directory contains a development compose file that builds both images from source:
+
+```bash
+docker compose -f docker/docker-compose.yml up --build
+```
+
+UI: `http://localhost:8080` · API (proxied through nginx): `http://localhost:8080/api`
+
+### Deploying to Dokploy (production)
+
+The repo root contains [docker-compose.prod.yml](docker-compose.prod.yml), which pulls pre-built images from GHCR (built for `linux/amd64`) instead of building locally.
+
+**Published images** (built and pushed by [.github/workflows/docker-publish.yml](.github/workflows/docker-publish.yml) on every push to `main`):
+
+- `ghcr.io/marfi333/inventory-manager/api:latest` (and `:${sha}`)
+- `ghcr.io/marfi333/inventory-manager/ui:latest` (and `:${sha}`)
+
+**Setup in Dokploy:**
+
+1. Create a new Compose application pointing at this repo
+2. Set the compose file to `docker-compose.prod.yml`
+3. Expose the published ports through Dokploy's domain config:
+   - UI → host port `8089` → container `8080`
+   - API → host port `3009` → container `3001` (only needed if you want direct API access; otherwise the UI proxies `/api/*` to the API service over the internal Docker network)
+4. The named volume `api_data` persists the SQLite database across deploys; do not delete it
+
+**Auto-updates:** A Watchtower container polls every 120 seconds and pulls new `:latest` images automatically. Only containers with the label `com.centurylinklabs.watchtower.enable=true` are watched, so Watchtower itself doesn't restart.
+
 ## API Endpoints
 
 ### Categories

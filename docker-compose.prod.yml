@@ -3,22 +3,33 @@ name: inventory-system
 services:
   api:
     image: ghcr.io/marfi333/inventory-manager/api:latest
+    restart: unless-stopped
     ports:
       - '3009:3001'
     environment:
       - NODE_ENV=production
     volumes:
-      - ./data:/app/api/data
+      - api_data:/app/api/data
+    networks:
+      - app-network
+    labels:
+      - 'com.centurylinklabs.watchtower.enable=true'
 
   ui:
     image: ghcr.io/marfi333/inventory-manager/ui:latest
-    environment:
-      - VITE_API_URL=/api
+    restart: unless-stopped
     ports:
       - '8089:8080'
+    depends_on:
+      - api
+    networks:
+      - app-network
+    labels:
+      - 'com.centurylinklabs.watchtower.enable=true'
 
   watchtower:
     image: containrrr/watchtower:latest
+    restart: unless-stopped
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
@@ -26,6 +37,11 @@ services:
       WATCHTOWER_LABEL_ENABLE: true
       WATCHTOWER_CLEANUP: true
       WATCHTOWER_REMOVE_VOLUMES: false
+    networks:
+      - app-network
+
+volumes:
+  api_data:
 
 networks:
   app-network:
