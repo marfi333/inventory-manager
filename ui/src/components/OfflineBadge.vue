@@ -10,20 +10,13 @@
     ]"
     :aria-label="ariaLabel"
   >
-    <i
-      :class="[
-        'pi text-[0.65rem]',
-        isOnline ? 'pi-check-circle' : 'pi-cloud-slash',
-      ]"
-    ></i>
+    <i :class="['pi !text-[0.75rem] !leading-none', isOnline ? 'pi-check-circle' : 'pi-exclamation-triangle']"></i>
     <span>{{ isOnline ? 'Online' : 'Offline' }}</span>
     <span
       v-if="pendingCount > 0"
       :class="[
         'inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 text-[0.65rem] font-semibold rounded-full',
-        hasFailed
-          ? 'bg-red-500 text-white'
-          : 'bg-indigo-600 text-white',
+        hasFailed ? 'bg-red-500 text-white' : 'bg-indigo-600 text-white',
       ]"
     >
       {{ pendingCount }}
@@ -50,9 +43,7 @@ const pendingMutations = useLiveQuery<OutboxMutation[]>(() =>
 )
 
 const pendingCount = computed(() => pendingMutations.value?.length ?? 0)
-const hasFailed = computed(() =>
-  (pendingMutations.value ?? []).some((m) => m.status === 'failed'),
-)
+const hasFailed = computed(() => (pendingMutations.value ?? []).some((m) => m.status === 'failed'))
 
 const ariaLabel = computed(() => {
   const status = isOnline.value ? 'online' : 'offline'
