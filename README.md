@@ -16,6 +16,7 @@ A full-stack inventory management system built with **Hono** and **Vue 3** with 
 - **Vue 3** with Composition API
 - **PrimeVue** UI library with Aura theme
 - **Tailwind CSS** for styling
+- **Installable PWA** with offline support (service worker + IndexedDB cache)
 
 ### Core Functionality
 
@@ -25,6 +26,7 @@ A full-stack inventory management system built with **Hono** and **Vue 3** with 
 - **Low Stock Alerts**: Visual indicators for items below minimum quantity
 - **Dashboard**: Overview with statistics and recent activity
 - **Professional UI**: Clean, modern interface with data tables and forms
+- **Offline-first**: Browse cached inventory, queue mutations while offline, auto-sync on reconnect
 
 ## Getting Started
 
@@ -107,6 +109,27 @@ The repo root contains [docker-compose.prod.yml](docker-compose.prod.yml), which
 4. The named volume `api_data` persists the SQLite database across deploys; do not delete it
 
 **Auto-updates:** A Watchtower container polls every 120 seconds and pulls new `:latest` images automatically. Only containers with the label `com.centurylinklabs.watchtower.enable=true` are watched, so Watchtower itself doesn't restart.
+
+**HTTPS is required for PWA features.** Browsers will not install the app or register the service worker over plain HTTP (except on `localhost`). Configure Dokploy's reverse proxy / Traefik to terminate TLS in front of the UI container — once the domain is served over HTTPS, install prompts, offline caching, and background sync work automatically. The nginx config inside the container does not terminate TLS itself.
+
+## Progressive Web App
+
+The UI is an installable PWA backed by [vite-plugin-pwa](https://vite-pwa-org.netlify.app/) and Workbox.
+
+**Install:**
+
+- **Desktop (Chrome/Edge):** click the install icon in the address bar, or use the menu → "Install Inventory System".
+- **iOS Safari:** tap the share icon → "Add to Home Screen".
+- **Android Chrome:** tap the menu → "Add to Home screen" / "Install app".
+
+**Offline behavior:**
+
+- App shell (HTML/JS/CSS) is precached on first visit, so the app boots without a network.
+- `GET /api/*` responses are cached with a `NetworkFirst` strategy (5s timeout, 24h TTL) and read from cache when offline.
+- Inventory data is mirrored into IndexedDB via Dexie so lists and details render fully offline.
+- Mutations (create/update/delete) made while offline are queued in an outbox and replayed when connectivity returns. Conflict policy is last-write-wins.
+
+**Updates:** new builds are detected automatically; the user sees a toast with a "Reload" action that activates the new service worker.
 
 ## API Endpoints
 
