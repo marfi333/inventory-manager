@@ -4,8 +4,10 @@ import { Toaster } from 'vue-sonner'
 import 'vue-sonner/style.css'
 import Sidebar from './components/Sidebar.vue'
 import { usePwaUpdate } from './composables/usePwaUpdate'
+import { useSyncQueue } from './composables/useSyncQueue'
 
 usePwaUpdate()
+useSyncQueue()
 
 const sidebarRef = ref()
 const windowWidth = ref(window.innerWidth)
