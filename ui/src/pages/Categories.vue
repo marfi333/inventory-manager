@@ -46,8 +46,8 @@
 
     <!-- Mobile Cards (< 768px) -->
     <div v-else>
-      <div class="md:hidden">
-        <PullToRefresh ref="pullToRefreshRef" @refresh="onRefresh">
+      <div class="md:hidden flex flex-col min-h-[calc(100vh-12rem)]">
+        <PullToRefresh ref="pullToRefreshRef" @refresh="onRefresh" class="flex-1">
           <div v-if="filteredCategories.length === 0" class="py-12 text-center">
             <div v-if="categories.length === 0 && !searchQuery" class="max-w-sm mx-auto p-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm">
               <div class="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-indigo-100 dark:bg-indigo-900/50">
@@ -141,33 +141,37 @@
             </SwipeList>
           </div>
 
-          <div v-if="filteredCategories.length > 0" class="flex items-center justify-between px-4 mt-6">
-            <div class="text-sm text-slate-500 dark:text-slate-400">
-              {{ (currentPage - 1) * itemsPerPage + 1 }}-{{ Math.min(currentPage * itemsPerPage, filteredCategories.length) }} of {{ filteredCategories.length }}
-            </div>
-            <div class="flex items-center space-x-2">
-              <Button
-                icon="pi pi-chevron-left"
-                severity="secondary"
-                size="small"
-                :disabled="currentPage === 1"
-                @click="currentPage--"
-                class="!w-8 !h-8 !p-0"
-              />
-              <span class="text-sm font-medium text-slate-900 dark:text-white">
-                {{ currentPage }} / {{ totalPages }}
-              </span>
-              <Button
-                icon="pi pi-chevron-right"
-                severity="secondary"
-                size="small"
-                :disabled="currentPage === totalPages"
-                @click="currentPage++"
-                class="!w-8 !h-8 !p-0"
-              />
-            </div>
-          </div>
         </PullToRefresh>
+
+        <div
+          v-if="filteredCategories.length > 0"
+          class="sticky bottom-0 z-10 flex items-center justify-between px-4 py-3 mt-4 -mx-4 -mb-4 bg-white border-t shadow-[0_-1px_2px_rgba(0,0,0,0.04)] dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+        >
+          <div class="text-sm text-slate-500 dark:text-slate-400">
+            {{ (currentPage - 1) * itemsPerPage + 1 }}-{{ Math.min(currentPage * itemsPerPage, filteredCategories.length) }} of {{ filteredCategories.length }}
+          </div>
+          <div class="flex items-center space-x-2">
+            <Button
+              icon="pi pi-chevron-left"
+              severity="secondary"
+              size="small"
+              :disabled="currentPage === 1"
+              @click="currentPage--"
+              class="!w-8 !h-8 !p-0"
+            />
+            <span class="text-sm font-medium text-slate-900 dark:text-white">
+              {{ currentPage }} / {{ totalPages }}
+            </span>
+            <Button
+              icon="pi pi-chevron-right"
+              severity="secondary"
+              size="small"
+              :disabled="currentPage === totalPages"
+              @click="currentPage++"
+              class="!w-8 !h-8 !p-0"
+            />
+          </div>
+        </div>
       </div>
 
       <!-- Desktop Table (>= 768px) -->
@@ -373,15 +377,15 @@ watch(searchQuery, () => {
   currentPage.value = 1
 })
 
-const loadCategories = async () => {
+const loadCategories = async (options: { silent?: boolean } = {}) => {
   try {
-    loading.value = true
+    if (!options.silent) loading.value = true
     categories.value = await apiService.getCategories()
   } catch (error) {
     console.error('Error loading categories:', error)
     toast.error('Failed to load categories')
   } finally {
-    loading.value = false
+    if (!options.silent) loading.value = false
   }
 }
 
@@ -443,7 +447,7 @@ const saveCategory = async () => {
     }
 
     dialogVisible.value = false
-    await loadCategories()
+    await loadCategories({ silent: true })
   } catch (error) {
     console.error('Error saving category:', error)
     toast.error(error instanceof Error ? error.message : 'Failed to save category')
@@ -470,7 +474,7 @@ const deleteCategory = async () => {
     toast.success('Category deleted successfully')
 
     confirmingDeleteId.value = null
-    await loadCategories()
+    await loadCategories({ silent: true })
   } catch (error) {
     console.error('Error deleting category:', error)
     toast.error(error instanceof Error ? error.message : 'Failed to delete category')
@@ -480,7 +484,7 @@ const deleteCategory = async () => {
 }
 
 const onRefresh = async () => {
-  await loadCategories()
+  await loadCategories({ silent: true })
   pullToRefreshRef.value?.done()
 }
 

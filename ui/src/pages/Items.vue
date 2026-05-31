@@ -52,8 +52,8 @@
 
     <!-- Mobile Cards (< 768px) -->
     <div v-else>
-      <div class="md:hidden">
-        <PullToRefresh ref="pullToRefreshRef" @refresh="onRefresh">
+      <div class="md:hidden flex flex-col min-h-[calc(100vh-12rem)]">
+        <PullToRefresh ref="pullToRefreshRef" @refresh="onRefresh" class="flex-1">
           <div v-if="filteredItems.length === 0" class="py-12 text-center">
             <div v-if="items.length === 0 && !searchQuery" class="max-w-sm mx-auto p-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm">
               <div class="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-100 dark:bg-emerald-900/50">
@@ -173,33 +173,37 @@
             </SwipeList>
           </div>
 
-          <div v-if="filteredItems.length > 0" class="flex items-center justify-between px-4 mt-6">
-            <div class="text-sm text-slate-500 dark:text-slate-400">
-              {{ (currentPage - 1) * itemsPerPage + 1 }}-{{ Math.min(currentPage * itemsPerPage, filteredItems.length) }} of {{ filteredItems.length }}
-            </div>
-            <div class="flex items-center space-x-2">
-              <Button
-                icon="pi pi-chevron-left"
-                severity="secondary"
-                size="small"
-                :disabled="currentPage === 1"
-                @click="currentPage--"
-                class="!w-8 !h-8 !p-0"
-              />
-              <span class="text-sm font-medium text-slate-900 dark:text-white">
-                {{ currentPage }} / {{ totalPages }}
-              </span>
-              <Button
-                icon="pi pi-chevron-right"
-                severity="secondary"
-                size="small"
-                :disabled="currentPage === totalPages"
-                @click="currentPage++"
-                class="!w-8 !h-8 !p-0"
-              />
-            </div>
-          </div>
         </PullToRefresh>
+
+        <div
+          v-if="filteredItems.length > 0"
+          class="sticky bottom-0 z-10 flex items-center justify-between px-4 py-3 mt-4 -mx-4 -mb-4 bg-white border-t shadow-[0_-1px_2px_rgba(0,0,0,0.04)] dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+        >
+          <div class="text-sm text-slate-500 dark:text-slate-400">
+            {{ (currentPage - 1) * itemsPerPage + 1 }}-{{ Math.min(currentPage * itemsPerPage, filteredItems.length) }} of {{ filteredItems.length }}
+          </div>
+          <div class="flex items-center space-x-2">
+            <Button
+              icon="pi pi-chevron-left"
+              severity="secondary"
+              size="small"
+              :disabled="currentPage === 1"
+              @click="currentPage--"
+              class="!w-8 !h-8 !p-0"
+            />
+            <span class="text-sm font-medium text-slate-900 dark:text-white">
+              {{ currentPage }} / {{ totalPages }}
+            </span>
+            <Button
+              icon="pi pi-chevron-right"
+              severity="secondary"
+              size="small"
+              :disabled="currentPage === totalPages"
+              @click="currentPage++"
+              class="!w-8 !h-8 !p-0"
+            />
+          </div>
+        </div>
       </div>
 
       <!-- Desktop Table (>= 768px) -->
@@ -627,9 +631,9 @@ const getCategoryName = (categoryId: string) => {
   return category ? category.name : 'Unknown'
 }
 
-const loadData = async () => {
+const loadData = async (options: { silent?: boolean } = {}) => {
   try {
-    loading.value = true
+    if (!options.silent) loading.value = true
     const [itemsData, categoriesData] = await Promise.all([apiService.getItems(), apiService.getCategories()])
     items.value = itemsData
     categories.value = categoriesData
@@ -637,7 +641,7 @@ const loadData = async () => {
     console.error('Error loading data:', error)
     toast.error('Failed to load data')
   } finally {
-    loading.value = false
+    if (!options.silent) loading.value = false
   }
 }
 
@@ -738,7 +742,7 @@ const saveItem = async () => {
     }
 
     dialogVisible.value = false
-    await loadData()
+    await loadData({ silent: true })
   } catch (error) {
     console.error('Error saving item:', error)
     toast.error(error instanceof Error ? error.message : 'Failed to save item')
@@ -812,7 +816,7 @@ const deleteItem = async () => {
 
     confirmingDeleteId.value = null
     itemToDelete.value = null
-    await loadData()
+    await loadData({ silent: true })
   } catch (error) {
     console.error('Error deleting item:', error)
     toast.error(error instanceof Error ? error.message : 'Failed to delete item')
@@ -873,7 +877,7 @@ const cancelDelete = () => {
 }
 
 const onRefresh = async () => {
-  await loadData()
+  await loadData({ silent: true })
   pullToRefreshRef.value?.done()
 }
 
