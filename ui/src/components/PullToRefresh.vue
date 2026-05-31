@@ -5,6 +5,7 @@
     @touchstart="onTouchStart"
     @touchmove="onTouchMove"
     @touchend="onTouchEnd"
+    @touchcancel="onTouchEnd"
   >
     <div
       class="pull-to-refresh__indicator"
@@ -35,9 +36,11 @@ import { ref, computed } from 'vue'
 const props = withDefaults(defineProps<{
   threshold?: number
   maxPull?: number
+  activationDistance?: number
 }>(), {
   threshold: 60,
-  maxPull: 120
+  maxPull: 120,
+  activationDistance: 12
 })
 
 const emit = defineEmits<{
@@ -45,9 +48,11 @@ const emit = defineEmits<{
 }>()
 
 const containerRef = ref<HTMLElement>()
+const tracking = ref(false)
 const pulling = ref(false)
 const refreshing = ref(false)
 const startY = ref(0)
+const startX = ref(0)
 const pullDistance = ref(0)
 
 const indicatorOffset = computed(() => {
@@ -79,33 +84,51 @@ function isAtTop(): boolean {
 function onTouchStart(e: TouchEvent) {
   if (refreshing.value) return
   if (!isAtTop()) return
+  if (e.touches.length !== 1) return
   startY.value = e.touches[0].clientY
-  pulling.value = true
+  startX.value = e.touches[0].clientX
+  tracking.value = true
+  pulling.value = false
 }
 
 function onTouchMove(e: TouchEvent) {
-  if (!pulling.value || refreshing.value) return
+  if (!tracking.value || refreshing.value) return
 
   const currentY = e.touches[0].clientY
-  const diff = currentY - startY.value
+  const currentX = e.touches[0].clientX
+  const diffY = currentY - startY.value
+  const diffX = currentX - startX.value
 
-  if (diff < 0) {
-    pullDistance.value = 0
-    return
+  // Activate only when vertical motion is dominant and exceeds activation threshold.
+  if (!pulling.value) {
+    if (diffY < 0 || Math.abs(diffX) > Math.abs(diffY)) {
+      // Horizontal swipe or upward — let it through (e.g. SwipeList, native scroll).
+      tracking.value = false
+      return
+    }
+    if (diffY < props.activationDistance) {
+      // Below activation threshold; don't preventDefault yet.
+      return
+    }
+    pulling.value = true
   }
 
   // Dampen the pull distance
-  pullDistance.value = diff * 0.5
+  pullDistance.value = Math.max(0, (diffY - props.activationDistance) * 0.5)
 
-  if (pullDistance.value > 0) {
+  if (pullDistance.value > 0 && e.cancelable) {
     e.preventDefault()
   }
 }
 
 function onTouchEnd() {
-  if (!pulling.value || refreshing.value) return
+  if (!tracking.value || refreshing.value) {
+    tracking.value = false
+    pulling.value = false
+    return
+  }
 
-  if (pullDistance.value >= props.threshold) {
+  if (pulling.value && pullDistance.value >= props.threshold) {
     refreshing.value = true
     pullDistance.value = 0
     emit('refresh')
@@ -114,6 +137,7 @@ function onTouchEnd() {
   }
 
   pulling.value = false
+  tracking.value = false
 }
 
 function done() {
