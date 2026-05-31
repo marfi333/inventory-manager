@@ -35,14 +35,14 @@ const toggleMobileMenu = () => {
       class="sticky top-0 z-30 transition-colors duration-200 bg-white border-b shadow-sm lg:hidden dark:bg-slate-800 border-slate-200 dark:border-slate-700"
       style="padding-top: env(safe-area-inset-top)"
     >
-      <div class="flex items-center justify-between px-4 py-3">
+      <div class="relative flex items-center justify-between px-4 py-3">
         <button
           @click="toggleMobileMenu"
           class="p-2 transition-colors duration-200 rounded text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
         >
           <i class="text-xl pi pi-bars"></i>
         </button>
-        <div class="flex items-center">
+        <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center pointer-events-none">
           <i class="mr-2 text-xl text-indigo-600 pi pi-warehouse dark:text-indigo-400"></i>
           <span class="font-semibold text-slate-900 dark:text-white">Inventory</span>
         </div>
