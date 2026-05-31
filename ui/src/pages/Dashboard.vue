@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-6">
+  <div class="pb-10 space-y-6">
     <div class="mb-8">
       <h1 class="text-2xl font-semibold text-slate-900 dark:text-white">Dashboard</h1>
       <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">Overview of your inventory system</p>
@@ -126,7 +126,7 @@ const stats = computed(() => ({
 }))
 
 const recentItems = computed(() =>
-  items.value.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5)
+  items.value.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5),
 )
 
 const loadData = async () => {

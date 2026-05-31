@@ -47,7 +47,7 @@
 
     <!-- Mobile Cards (< 768px) -->
     <div v-else>
-      <div class="md:hidden flex flex-col min-h-[calc(100vh-12rem)]">
+      <div class="md:hidden flex flex-col min-h-[calc(100svh-12rem)]">
         <PullToRefresh ref="pullToRefreshRef" @refresh="onRefresh" class="flex-1">
           <div v-if="filteredCategories.length === 0" class="py-12 text-center">
             <div v-if="categories.length === 0 && !searchQuery" class="max-w-sm mx-auto p-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm">
