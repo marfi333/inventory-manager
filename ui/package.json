@@ -13,6 +13,7 @@
     "@ahultgren/vue3-swipe-actions": "^0.0.6",
     "@primevue/themes": "^4.0.0",
     "autoprefixer": "^10.4.16",
+    "dexie": "^4.4.3",
     "postcss": "^8.4.32",
     "primeicons": "^7.0.0",
     "primevue": "^4.0.0",
