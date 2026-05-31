@@ -14,12 +14,14 @@ import {
   markInFlight,
   markSynced,
   peekPending,
+  retry as retryOutbox,
   rewriteClientId,
 } from '../services/outbox'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
 
 let draining = false
+let pendingRequest = false
 
 const isNetworkError = (err: unknown): boolean =>
   err instanceof TypeError || (typeof navigator !== 'undefined' && navigator.onLine === false)
@@ -72,44 +74,51 @@ async function replayMutation(mutation: OutboxMutation): Promise<void> {
 }
 
 export async function drainQueue(): Promise<void> {
-  if (draining) return
+  if (draining) {
+    pendingRequest = true
+    return
+  }
   if (typeof navigator !== 'undefined' && navigator.onLine === false) return
 
   draining = true
   let synced = 0
-  let failed = 0
 
   try {
-    const pending = await peekPending()
-    for (const mutation of pending) {
-      if (mutation.id === undefined) continue
+    do {
+      pendingRequest = false
+      const pending = await peekPending()
+      let networkLost = false
 
-      await markInFlight(mutation.id)
+      for (const mutation of pending) {
+        if (mutation.id === undefined) continue
 
-      try {
-        await replayMutation(mutation)
-        await markSynced(mutation.id)
-        synced += 1
-      } catch (err) {
-        if (isNetworkError(err)) {
-          await markFailed(mutation.id, 'Network error during replay')
-          break
+        await markInFlight(mutation.id)
+
+        try {
+          await replayMutation(mutation)
+          await markSynced(mutation.id)
+          synced += 1
+        } catch (err) {
+          if (isNetworkError(err)) {
+            await markFailed(mutation.id, 'Network error during replay')
+            networkLost = true
+            break
+          }
+          const message = err instanceof Error ? err.message : 'Unknown error'
+          await markFailed(mutation.id, message)
+          toast.error(`Sync failed: ${describeMutation(mutation)}`, { description: message })
         }
-        const message = err instanceof Error ? err.message : 'Unknown error'
-        await markFailed(mutation.id, message)
-        failed += 1
-        toast.error(`Sync failed: ${describeMutation(mutation)}`, { description: message })
       }
-    }
+
+      if (networkLost) break
+    } while (pendingRequest)
   } finally {
     draining = false
+    pendingRequest = false
   }
 
   if (synced > 0) {
     toast.success(`${synced} change${synced === 1 ? '' : 's'} synced`)
-  }
-  if (failed > 0 && synced === 0) {
-    // toast.error already shown per failure; nothing else to surface here
   }
 }
 
@@ -121,6 +130,16 @@ function describeMutation(mutation: OutboxMutation): string {
         ? 'delete'
         : 'update'
   return `${verb} ${mutation.resource}`
+}
+
+/**
+ * Re-enqueue a failed mutation and trigger a drain. If a drain is already in
+ * flight, drainQueue sets pendingRequest so the just-retried mutation is
+ * picked up in a follow-up pass without dropping it on the floor.
+ */
+export async function retryMutation(id: number): Promise<void> {
+  await retryOutbox(id)
+  void drainQueue()
 }
 
 export function useSyncQueue() {
