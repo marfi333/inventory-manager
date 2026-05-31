@@ -122,11 +122,10 @@ const handleResize = () => {
 
 const onTouchStart = (e: TouchEvent) => {
   if (window.innerWidth >= 1024) return
-  if (isMobileMenuOpen.value) return
   if (e.touches.length > 1) return
   const touch = e.touches[0]
   if (!touch) return
-  if (touch.clientX > EDGE_ZONE_PX) return
+  if (!isMobileMenuOpen.value && touch.clientX > EDGE_ZONE_PX) return
   touchStartX = touch.clientX
   touchStartY = touch.clientY
   tracking = true
@@ -134,34 +133,28 @@ const onTouchStart = (e: TouchEvent) => {
 }
 
 // Non-passive so we can preventDefault() to suppress the iOS Safari
-// edge swipe-back. Once the gesture looks horizontal-rightward we
-// "claim" it and swallow further moves until the user lifts their
-// finger; otherwise (vertical scroll, leftward swipe) we let the
-// browser keep its default behavior.
+// edge swipe-back. When the menu is closed we claim a rightward edge
+// swipe to open it; when the menu is open we claim any horizontal
+// swipe just to swallow the OS back gesture.
 const onTouchMove = (e: TouchEvent) => {
   if (!tracking) return
   const touch = e.touches[0]
   if (!touch) return
   const dx = touch.clientX - touchStartX
   const dy = Math.abs(touch.clientY - touchStartY)
+  const dxAbs = Math.abs(dx)
 
   if (!claimed) {
-    if (dy > VERTICAL_SLOP_PX && dy > dx) {
+    if (dy > VERTICAL_SLOP_PX && dy > dxAbs) {
       tracking = false
       return
     }
-    if (dx < -HORIZONTAL_LOCK_PX) {
-      tracking = false
-      return
-    }
-    if (dx >= HORIZONTAL_LOCK_PX) {
-      claimed = true
-    }
+    if (dxAbs >= HORIZONTAL_LOCK_PX) claimed = true
   }
 
   if (claimed) {
     if (e.cancelable) e.preventDefault()
-    if (dx >= OPEN_THRESHOLD_PX) {
+    if (!isMobileMenuOpen.value && dx >= OPEN_THRESHOLD_PX) {
       isMobileMenuOpen.value = true
       tracking = false
       claimed = false
