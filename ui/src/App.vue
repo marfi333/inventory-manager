@@ -3,6 +3,9 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Toaster } from 'vue-sonner'
 import 'vue-sonner/style.css'
 import Sidebar from './components/Sidebar.vue'
+import { usePwaUpdate } from './composables/usePwaUpdate'
+
+usePwaUpdate()
 
 const sidebarRef = ref()
 const windowWidth = ref(window.innerWidth)
