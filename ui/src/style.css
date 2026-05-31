@@ -5,6 +5,15 @@
 @tailwind utilities;
 
 @layer base {
+  /* Paint html/body with the mobile header color so the iOS safe-area
+     zone (under the dynamic island / notch) and overscroll/rubber-band
+     match the header instead of revealing the page background. */
+  html {
+    background-color: #ffffff;
+  }
+  html.dark {
+    background-color: #1e293b;
+  }
   body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';

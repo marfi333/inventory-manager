@@ -29,7 +29,8 @@ const toggleMobileMenu = () => {
     <Sidebar ref="sidebarRef" />
 
     <div
-      class="transition-colors duration-200 bg-white border-b shadow-sm lg:hidden dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+      class="sticky top-0 z-30 transition-colors duration-200 bg-white border-b shadow-sm lg:hidden dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+      style="padding-top: env(safe-area-inset-top)"
     >
       <div class="flex items-center justify-between px-4 py-3">
         <button
