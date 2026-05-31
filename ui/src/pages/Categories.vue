@@ -313,20 +313,19 @@
 
 <script setup lang="ts">
 import { ref, onMounted, reactive, computed, watch } from 'vue'
-import { useToast } from 'primevue/usetoast'
+import { toast } from 'vue-sonner'
 import Button from 'primevue/button'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
 import { SwipeList } from '@ahultgren/vue3-swipe-actions'
-import '@ahultgren/vue3-swipe-actions/dist/style.css'
+import '@ahultgren/vue3-swipe-actions/style.css'
 import BottomDrawer from '../components/BottomDrawer.vue'
 import PullToRefresh from '../components/PullToRefresh.vue'
 import { apiService } from '../services/api'
 import type { Category, CreateCategoryRequest, UpdateCategoryRequest } from '../types'
 
-const toast = useToast()
 
 const loading = ref(true)
 const saving = ref(false)
@@ -379,12 +378,7 @@ const loadCategories = async () => {
     categories.value = await apiService.getCategories()
   } catch (error) {
     console.error('Error loading categories:', error)
-    toast.add({
-      severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to load categories',
-      life: 3000,
-    })
+    toast.error('Failed to load categories')
   } finally {
     loading.value = false
   }
@@ -436,12 +430,7 @@ const saveCategory = async () => {
       }
 
       await apiService.createCategory(data)
-      toast.add({
-        severity: 'success',
-        summary: 'Success',
-        detail: 'Category created successfully',
-        life: 3000,
-      })
+      toast.success('Category created successfully')
     } else {
       const data: UpdateCategoryRequest = {
         name: categoryForm.name.trim(),
@@ -449,24 +438,14 @@ const saveCategory = async () => {
       }
 
       await apiService.updateCategory(selectedCategory.value!.id, data)
-      toast.add({
-        severity: 'success',
-        summary: 'Success',
-        detail: 'Category updated successfully',
-        life: 3000,
-      })
+      toast.success('Category updated successfully')
     }
 
     dialogVisible.value = false
     await loadCategories()
   } catch (error) {
     console.error('Error saving category:', error)
-    toast.add({
-      severity: 'error',
-      summary: 'Error',
-      detail: error instanceof Error ? error.message : 'Failed to save category',
-      life: 3000,
-    })
+    toast.error(error instanceof Error ? error.message : 'Failed to save category')
   } finally {
     saving.value = false
   }
@@ -487,23 +466,13 @@ const deleteCategory = async () => {
     deleting.value = true
     await apiService.deleteCategory(confirmingDeleteId.value)
 
-    toast.add({
-      severity: 'success',
-      summary: 'Success',
-      detail: 'Category deleted successfully',
-      life: 3000,
-    })
+    toast.success('Category deleted successfully')
 
     confirmingDeleteId.value = null
     await loadCategories()
   } catch (error) {
     console.error('Error deleting category:', error)
-    toast.add({
-      severity: 'error',
-      summary: 'Error',
-      detail: error instanceof Error ? error.message : 'Failed to delete category',
-      life: 3000,
-    })
+    toast.error(error instanceof Error ? error.message : 'Failed to delete category')
   } finally {
     deleting.value = false
   }

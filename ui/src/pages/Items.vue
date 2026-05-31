@@ -535,7 +535,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, reactive, computed, watch } from 'vue'
-import { useToast } from 'primevue/usetoast'
+import { toast } from 'vue-sonner'
 import Button from 'primevue/button'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
@@ -545,13 +545,12 @@ import Textarea from 'primevue/textarea'
 import Dropdown from 'primevue/dropdown'
 import AutoComplete from 'primevue/autocomplete'
 import { SwipeList } from '@ahultgren/vue3-swipe-actions'
-import '@ahultgren/vue3-swipe-actions/dist/style.css'
+import '@ahultgren/vue3-swipe-actions/style.css'
 import BottomDrawer from '../components/BottomDrawer.vue'
 import PullToRefresh from '../components/PullToRefresh.vue'
 import { apiService } from '../services/api'
 import type { Item, Category, CreateItemRequest, UpdateItemRequest, UpdateQuantityRequest } from '../types'
 
-const toast = useToast()
 
 const loading = ref(true)
 const saving = ref(false)
@@ -635,12 +634,7 @@ const loadData = async () => {
     categories.value = categoriesData
   } catch (error) {
     console.error('Error loading data:', error)
-    toast.add({
-      severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to load data',
-      life: 3000,
-    })
+    toast.error('Failed to load data')
   } finally {
     loading.value = false
   }
@@ -728,12 +722,7 @@ const saveItem = async () => {
       }
 
       await apiService.createItem(data)
-      toast.add({
-        severity: 'success',
-        summary: 'Success',
-        detail: 'Item created successfully',
-        life: 3000,
-      })
+      toast.success('Item created successfully')
     } else {
       const data: UpdateItemRequest = {
         name: itemForm.name.trim(),
@@ -744,24 +733,14 @@ const saveItem = async () => {
       }
 
       await apiService.updateItem(selectedItem.value!.id, data)
-      toast.add({
-        severity: 'success',
-        summary: 'Success',
-        detail: 'Item updated successfully',
-        life: 3000,
-      })
+      toast.success('Item updated successfully')
     }
 
     dialogVisible.value = false
     await loadData()
   } catch (error) {
     console.error('Error saving item:', error)
-    toast.add({
-      severity: 'error',
-      summary: 'Error',
-      detail: error instanceof Error ? error.message : 'Failed to save item',
-      life: 3000,
-    })
+    toast.error(error instanceof Error ? error.message : 'Failed to save item')
   } finally {
     saving.value = false
   }
@@ -783,20 +762,10 @@ const adjustQuantity = async (item: Item, change: number) => {
       quantityAnimatingId.value = null
     }, 300)
 
-    toast.add({
-      severity: 'success',
-      summary: 'Success',
-      detail: 'Quantity updated successfully',
-      life: 2000,
-    })
+    toast.success('Quantity updated successfully')
   } catch (error) {
     console.error('Error updating quantity:', error)
-    toast.add({
-      severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to update quantity',
-      life: 3000,
-    })
+    toast.error('Failed to update quantity')
   }
 }
 
@@ -824,20 +793,10 @@ const updateQuantity = async (item: Item, operation: 'set' | 'add' | 'subtract',
       }
     }
 
-    toast.add({
-      severity: 'success',
-      summary: 'Success',
-      detail: 'Quantity updated successfully',
-      life: 2000,
-    })
+    toast.success('Quantity updated successfully')
   } catch (error) {
     console.error('Error updating quantity:', error)
-    toast.add({
-      severity: 'error',
-      summary: 'Error',
-      detail: error instanceof Error ? error.message : 'Failed to update quantity',
-      life: 3000,
-    })
+    toast.error(error instanceof Error ? error.message : 'Failed to update quantity')
   }
 }
 
@@ -848,24 +807,14 @@ const deleteItem = async () => {
     deleting.value = true
     await apiService.deleteItem(itemToDelete.value.id)
 
-    toast.add({
-      severity: 'success',
-      summary: 'Success',
-      detail: 'Item deleted successfully',
-      life: 3000,
-    })
+    toast.success('Item deleted successfully')
 
     confirmingDeleteId.value = null
     itemToDelete.value = null
     await loadData()
   } catch (error) {
     console.error('Error deleting item:', error)
-    toast.add({
-      severity: 'error',
-      summary: 'Error',
-      detail: error instanceof Error ? error.message : 'Failed to delete item',
-      life: 3000,
-    })
+    toast.error(error instanceof Error ? error.message : 'Failed to delete item')
   } finally {
     deleting.value = false
   }
@@ -902,19 +851,9 @@ const onCategorySelect = async (event: any) => {
       categories.value.push(newCategory)
       itemForm.categoryId = newCategory.id
       categorySearch.value = newCategory
-      toast.add({
-        severity: 'success',
-        summary: 'Category Created',
-        detail: `"${newCategory.name}" created`,
-        life: 2000,
-      })
+      toast.success(`"${newCategory.name}" created`)
     } catch (error) {
-      toast.add({
-        severity: 'error',
-        summary: 'Error',
-        detail: 'Failed to create category',
-        life: 3000,
-      })
+      toast.error('Failed to create category')
       categorySearch.value = ''
     }
   } else {
