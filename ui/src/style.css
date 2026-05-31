@@ -53,4 +53,19 @@
   .p-dialog .p-dialog-content {
     padding: 1rem;
   }
+
+  /* Prevent iOS Safari from zooming the viewport when focusing a form
+     control. Safari only auto-zooms when the focused input's font-size
+     is below 16px. */
+  input,
+  textarea,
+  select,
+  .p-inputtext,
+  .p-autocomplete-input,
+  .p-inputnumber-input,
+  .p-select-label,
+  .p-multiselect-label,
+  .p-treeselect-label {
+    font-size: 16px;
+  }
 }
