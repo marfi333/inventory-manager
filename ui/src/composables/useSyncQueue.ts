@@ -92,8 +92,14 @@ export async function drainQueue(): Promise<void> {
       const pending = await peekPending()
       let networkLost = false
 
-      for (const mutation of pending) {
-        if (mutation.id === undefined) continue
+      for (const stale of pending) {
+        if (stale.id === undefined) continue
+
+        // Re-read from Dexie: an earlier mutation in this same drain pass may
+        // have just rewritten this row's url/body via rewriteClientId (e.g. a
+        // POST that resolved a clientId referenced by a later PATCH).
+        const mutation = await db.mutations.get(stale.id)
+        if (!mutation || mutation.id === undefined) continue
 
         await markInFlight(mutation.id)
 
