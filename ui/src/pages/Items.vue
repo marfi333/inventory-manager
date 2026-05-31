@@ -1,13 +1,11 @@
 <template>
   <div class="space-y-6">
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-      <div>
+    <div class="flex flex-row items-start gap-4">
+      <div class="flex-1 min-w-0">
         <h1 class="text-2xl font-semibold text-slate-900 dark:text-white">Items</h1>
         <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">Manage your inventory items</p>
       </div>
-      <div class="mt-4 sm:mt-0">
-        <Button label="Add Item" icon="pi pi-plus" @click="showCreateDialog" />
-      </div>
+      <Button label="Add Item" icon="pi pi-plus" size="small" @click="showCreateDialog" class="shrink-0" />
     </div>
 
     <div
@@ -56,7 +54,7 @@
       <div class="md:hidden flex flex-col min-h-[calc(100svh-12rem)]">
         <PullToRefresh ref="pullToRefreshRef" @refresh="onRefresh" class="flex-1">
           <div v-if="filteredItems.length === 0" class="py-12 text-center">
-            <div v-if="items.length === 0 && !searchQuery" class="max-w-sm mx-auto p-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm">
+            <div v-if="items.length === 0 && !searchQuery" class="max-w-sm mx-auto p-6">
               <div class="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-100 dark:bg-emerald-900/50">
                 <i class="text-2xl pi pi-box text-emerald-600 dark:text-emerald-400"></i>
               </div>
