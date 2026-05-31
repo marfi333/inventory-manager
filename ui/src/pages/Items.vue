@@ -79,9 +79,10 @@
               item-key="id"
               class="swipe-list"
             >
-              <template #default="{ item }">
+              <template #default="{ item, revealed }">
                 <div
                   class="bg-white border rounded-lg shadow-sm dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                  :class="{ '!rounded-r-none': revealed.value === 'right' }"
                 >
                   <div v-if="confirmingDeleteId === item.id" class="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
                     <div class="flex items-center justify-between">
@@ -153,16 +154,16 @@
                 </div>
               </template>
 
-              <template #right="{ item }">
+              <template #right="{ item, close }">
                 <div class="flex h-full">
                   <button
-                    @click="editItem(item)"
+                    @click="close(); editItem(item)"
                     class="flex items-center justify-center w-16 bg-blue-500 text-white"
                   >
                     <i class="pi pi-pencil"></i>
                   </button>
                   <button
-                    @click="confirmDelete(item)"
+                    @click="close(); confirmDelete(item)"
                     class="flex items-center justify-center w-16 bg-red-500 text-white"
                   >
                     <i class="pi pi-trash"></i>
@@ -890,6 +891,8 @@ onMounted(() => {
 <style scoped>
 .swipe-list :deep(.swipeout-list-item) {
   margin-bottom: 0.75rem;
+  border-radius: 0.5rem;
+  overflow: hidden;
 }
 
 .swipe-list :deep(.swipeout-action) {
