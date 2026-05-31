@@ -576,13 +576,14 @@ onBeforeUnmount(() => {
 <style scoped>
 @media (max-width: 1023px) {
   .search-bar {
-    transition: margin 180ms ease-out, border-radius 180ms ease-out, border-color 180ms ease-out;
+    transition: margin 180ms ease-out, border-radius 180ms ease-out, border-color 180ms ease-out, box-shadow 180ms ease-out;
   }
   .search-bar[data-stuck] {
     margin-left: -1rem;
     margin-right: -1rem;
     border-radius: 0;
     border-color: transparent;
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.12);
   }
 }
 

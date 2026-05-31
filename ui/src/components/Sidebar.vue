@@ -82,27 +82,15 @@ import { useDarkMode } from '../composables/useDarkMode'
 const isMobileMenuOpen = ref(false)
 const { isDarkMode, toggleDarkMode, initializeDarkMode } = useDarkMode()
 
-const EDGE_ZONE_PX = 24
+const EDGE_ZONE_PX = 30
 const OPEN_THRESHOLD_PX = 60
-const VERTICAL_SLOP_PX = 40
-
-// iOS Safari reserves the leftmost ~20px for the system swipe-back gesture.
-// In a browser tab, start the trigger zone past that reserved strip so we
-// don't fight the OS. Installed-to-homescreen (standalone) PWAs have no
-// back gesture, so the full edge is ours.
-const IOS_SAFE_INSET_PX = 20
-const isStandalone =
-  window.matchMedia?.('(display-mode: standalone)').matches ||
-  (window.navigator as Navigator & { standalone?: boolean }).standalone === true
-const isIOS =
-  /iPad|iPhone|iPod/.test(window.navigator.userAgent) ||
-  (window.navigator.platform === 'MacIntel' && window.navigator.maxTouchPoints > 1)
-const edgeStart = isIOS && !isStandalone ? IOS_SAFE_INSET_PX : 0
-const edgeEnd = isIOS && !isStandalone ? IOS_SAFE_INSET_PX + EDGE_ZONE_PX : EDGE_ZONE_PX
+const HORIZONTAL_LOCK_PX = 8
+const VERTICAL_SLOP_PX = 12
 
 let touchStartX = 0
 let touchStartY = 0
 let tracking = false
+let claimed = false
 
 const navigationItems = [
   {
@@ -135,38 +123,61 @@ const handleResize = () => {
 const onTouchStart = (e: TouchEvent) => {
   if (window.innerWidth >= 1024) return
   if (isMobileMenuOpen.value) return
+  if (e.touches.length > 1) return
   const touch = e.touches[0]
   if (!touch) return
-  if (touch.clientX < edgeStart || touch.clientX > edgeEnd) return
+  if (touch.clientX > EDGE_ZONE_PX) return
   touchStartX = touch.clientX
   touchStartY = touch.clientY
   tracking = true
+  claimed = false
 }
 
+// Non-passive so we can preventDefault() to suppress the iOS Safari
+// edge swipe-back. Once the gesture looks horizontal-rightward we
+// "claim" it and swallow further moves until the user lifts their
+// finger; otherwise (vertical scroll, leftward swipe) we let the
+// browser keep its default behavior.
 const onTouchMove = (e: TouchEvent) => {
   if (!tracking) return
   const touch = e.touches[0]
   if (!touch) return
   const dx = touch.clientX - touchStartX
   const dy = Math.abs(touch.clientY - touchStartY)
-  if (dy > VERTICAL_SLOP_PX && dy > dx) {
-    tracking = false
-    return
+
+  if (!claimed) {
+    if (dy > VERTICAL_SLOP_PX && dy > dx) {
+      tracking = false
+      return
+    }
+    if (dx < -HORIZONTAL_LOCK_PX) {
+      tracking = false
+      return
+    }
+    if (dx >= HORIZONTAL_LOCK_PX) {
+      claimed = true
+    }
   }
-  if (dx >= OPEN_THRESHOLD_PX) {
-    isMobileMenuOpen.value = true
-    tracking = false
+
+  if (claimed) {
+    if (e.cancelable) e.preventDefault()
+    if (dx >= OPEN_THRESHOLD_PX) {
+      isMobileMenuOpen.value = true
+      tracking = false
+      claimed = false
+    }
   }
 }
 
 const onTouchEnd = () => {
   tracking = false
+  claimed = false
 }
 
 onMounted(() => {
   window.addEventListener('resize', handleResize)
   window.addEventListener('touchstart', onTouchStart, { passive: true })
-  window.addEventListener('touchmove', onTouchMove, { passive: true })
+  window.addEventListener('touchmove', onTouchMove, { passive: false })
   window.addEventListener('touchend', onTouchEnd, { passive: true })
   window.addEventListener('touchcancel', onTouchEnd, { passive: true })
   initializeDarkMode()
