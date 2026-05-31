@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Toaster } from 'vue-sonner'
 import 'vue-sonner/style.css'
+import OfflineBadge from './components/OfflineBadge.vue'
 import Sidebar from './components/Sidebar.vue'
 import { usePwaUpdate } from './composables/usePwaUpdate'
 import { useSyncQueue } from './composables/useSyncQueue'
@@ -45,12 +46,18 @@ const toggleMobileMenu = () => {
           <i class="mr-2 text-xl text-indigo-600 pi pi-warehouse dark:text-indigo-400"></i>
           <span class="font-semibold text-slate-900 dark:text-white">Inventory</span>
         </div>
-        <div class="w-10"></div>
+        <OfflineBadge />
       </div>
     </div>
 
     <div class="lg:ml-60">
-      <main class="p-4 lg:p-6">
+      <div
+        class="hidden lg:flex sticky top-0 z-30 justify-end px-6 py-3 bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur"
+        style="padding-top: env(safe-area-inset-top)"
+      >
+        <OfflineBadge />
+      </div>
+      <main class="p-4 lg:p-6 lg:pt-0">
         <router-view />
       </main>
     </div>
