@@ -101,10 +101,17 @@
                           <i class="text-indigo-600 pi pi-folder dark:text-indigo-400"></i>
                         </div>
                         <div>
-                          <h3
-                            class="font-semibold text-slate-900 dark:text-white"
-                            v-html="highlightSearchTerm(item.name, searchQuery)"
-                          ></h3>
+                          <div class="flex items-center gap-2">
+                            <h3
+                              class="font-semibold text-slate-900 dark:text-white"
+                              v-html="highlightSearchTerm(item.name, searchQuery)"
+                            ></h3>
+                            <SyncStatusDot
+                              :status="syncStatusMap.get(item.id)"
+                              resource="category"
+                              :resource-id="item.id"
+                            />
+                          </div>
                           <p class="text-sm text-slate-500 dark:text-slate-400">
                             {{ new Date(item.createdAt).toLocaleDateString() }}
                           </p>
@@ -211,6 +218,12 @@
                       <i class="text-sm text-indigo-600 pi pi-folder dark:text-indigo-400"></i>
                     </div>
                     <span class="font-medium text-slate-900 dark:text-white">{{ data.name }}</span>
+                    <SyncStatusDot
+                      class="ml-2"
+                      :status="syncStatusMap.get(data.id)"
+                      resource="category"
+                      :resource-id="data.id"
+                    />
                   </div>
                 </template>
               </Column>
@@ -327,9 +340,13 @@ import { SwipeList } from '@ahultgren/vue3-swipe-actions'
 import '@ahultgren/vue3-swipe-actions/style.css'
 import BottomDrawer from '../components/BottomDrawer.vue'
 import PullToRefresh from '../components/PullToRefresh.vue'
+import SyncStatusDot from '../components/SyncStatusDot.vue'
+import { useCategorySyncStatus } from '../composables/useSyncStatusMap'
 import { apiService } from '../services/api'
 import type { Category, CreateCategoryRequest, UpdateCategoryRequest } from '../types'
 
+
+const syncStatusMap = useCategorySyncStatus()
 
 const loading = ref(true)
 const saving = ref(false)

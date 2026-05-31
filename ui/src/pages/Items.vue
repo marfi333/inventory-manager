@@ -102,10 +102,17 @@
                         <i class="text-sm text-emerald-600 pi pi-box dark:text-emerald-400"></i>
                       </div>
                       <div class="flex-1 min-w-0">
-                        <h3
-                          class="font-semibold text-sm text-slate-900 dark:text-white truncate"
-                          v-html="highlightSearchTerm(item.name, searchQuery)"
-                        ></h3>
+                        <div class="flex items-center gap-2">
+                          <h3
+                            class="font-semibold text-sm text-slate-900 dark:text-white truncate"
+                            v-html="highlightSearchTerm(item.name, searchQuery)"
+                          ></h3>
+                          <SyncStatusDot
+                            :status="syncStatusMap.get(item.id)"
+                            resource="item"
+                            :resource-id="item.id"
+                          />
+                        </div>
                         <p
                           class="text-xs text-slate-500 dark:text-slate-400"
                           v-html="highlightSearchTerm(getCategoryName(item.categoryId), searchQuery)"
@@ -243,7 +250,14 @@
                       <i class="text-sm pi pi-box text-emerald-600 dark:text-emerald-400"></i>
                     </div>
                     <div>
-                      <span class="font-medium text-slate-900 dark:text-white">{{ data.name }}</span>
+                      <div class="flex items-center gap-2">
+                        <span class="font-medium text-slate-900 dark:text-white">{{ data.name }}</span>
+                        <SyncStatusDot
+                          :status="syncStatusMap.get(data.id)"
+                          resource="item"
+                          :resource-id="data.id"
+                        />
+                      </div>
                       <div class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                         {{ getCategoryName(data.categoryId) }}
                       </div>
@@ -552,9 +566,13 @@ import { SwipeList } from '@ahultgren/vue3-swipe-actions'
 import '@ahultgren/vue3-swipe-actions/style.css'
 import BottomDrawer from '../components/BottomDrawer.vue'
 import PullToRefresh from '../components/PullToRefresh.vue'
+import SyncStatusDot from '../components/SyncStatusDot.vue'
+import { useItemSyncStatus } from '../composables/useSyncStatusMap'
 import { apiService } from '../services/api'
 import type { Item, Category, CreateItemRequest, UpdateItemRequest, UpdateQuantityRequest } from '../types'
 
+
+const syncStatusMap = useItemSyncStatus()
 
 const loading = ref(true)
 const saving = ref(false)

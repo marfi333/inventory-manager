@@ -56,6 +56,27 @@ export async function countPending(): Promise<number> {
 }
 
 /**
+ * Find failed mutations targeting a given resource. Matches both the
+ * server-assigned `resourceId` and the offline-create `clientId`, since the
+ * page-layer cache row's `id` field can hold either depending on whether the
+ * create has reconciled yet.
+ */
+export async function findFailedForResource(
+  resource: OutboxMutation['resource'],
+  resourceOrClientId: string,
+): Promise<OutboxMutation[]> {
+  const all = await db.mutations
+    .where('status')
+    .equals('failed')
+    .toArray()
+  return all.filter(
+    (m) =>
+      m.resource === resource &&
+      (m.resourceId === resourceOrClientId || m.clientId === resourceOrClientId),
+  )
+}
+
+/**
  * When an offline create resolves and the server assigns a real id, any
  * queued mutations that referenced the temporary clientId need to be rewritten
  * so they target the server-assigned resource. Walks the outbox and patches
