@@ -8,9 +8,12 @@ import type {
   UpdateQuantityRequest,
   ApiResponse,
 } from '../types'
+import { v4 as uuidv4 } from 'uuid'
 import {
   cacheCategories,
   cacheItems,
+  deleteCachedCategory,
+  deleteCachedItem,
   getCachedCategories,
   getCachedCategory,
   getCachedItem,
@@ -19,11 +22,15 @@ import {
   putCachedCategory,
   putCachedItem,
 } from './cache'
+import { db } from './db'
+import { enqueue, rewriteClientId } from './outbox'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
 
 const isNetworkError = (err: unknown): boolean =>
   err instanceof TypeError || (typeof navigator !== 'undefined' && navigator.onLine === false)
+
+const nowIso = (): string => new Date(Date.now()).toISOString()
 
 class ApiService {
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
@@ -77,31 +84,100 @@ class ApiService {
   }
 
   async createCategory(data: CreateCategoryRequest): Promise<Category> {
-    const response = await this.request<Category>('/categories', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    })
-    if (!response.data) {
-      throw new Error('Failed to create category')
+    const clientId = uuidv4()
+    const optimistic: Category = {
+      id: clientId,
+      name: data.name,
+      description: data.description,
+      createdAt: nowIso(),
+      updatedAt: nowIso(),
     }
-    return response.data
+    await putCachedCategory(optimistic, 'pending')
+
+    try {
+      const response = await this.request<Category>('/categories', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      })
+      if (!response.data) {
+        throw new Error('Failed to create category')
+      }
+      await db.transaction('rw', db.categories, db.mutations, async () => {
+        await deleteCachedCategory(clientId)
+        await putCachedCategory(response.data!)
+        await rewriteClientId(clientId, response.data!.id, 'category')
+      })
+      return response.data
+    } catch (err) {
+      if (isNetworkError(err)) {
+        await enqueue({
+          method: 'POST',
+          url: '/categories',
+          body: data,
+          resource: 'category',
+          clientId,
+        })
+        return optimistic
+      }
+      await deleteCachedCategory(clientId)
+      throw err
+    }
   }
 
   async updateCategory(id: string, data: UpdateCategoryRequest): Promise<Category> {
-    const response = await this.request<Category>(`/categories/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    })
-    if (!response.data) {
-      throw new Error('Failed to update category')
+    const existing = await getCachedCategory(id)
+    if (existing) {
+      await putCachedCategory({ ...existing, ...data, updatedAt: nowIso() }, 'pending')
     }
-    return response.data
+
+    try {
+      const response = await this.request<Category>(`/categories/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      })
+      if (!response.data) {
+        throw new Error('Failed to update category')
+      }
+      await putCachedCategory(response.data)
+      return response.data
+    } catch (err) {
+      if (isNetworkError(err)) {
+        await enqueue({
+          method: 'PUT',
+          url: `/categories/${id}`,
+          body: data,
+          resource: 'category',
+          resourceId: id,
+        })
+        return (await getCachedCategory(id)) ?? (existing as Category)
+      }
+      throw err
+    }
   }
 
   async deleteCategory(id: string): Promise<void> {
-    await this.request(`/categories/${id}`, {
-      method: 'DELETE',
-    })
+    const existing = await getCachedCategory(id)
+    await deleteCachedCategory(id)
+
+    try {
+      await this.request(`/categories/${id}`, {
+        method: 'DELETE',
+      })
+    } catch (err) {
+      if (isNetworkError(err)) {
+        await enqueue({
+          method: 'DELETE',
+          url: `/categories/${id}`,
+          resource: 'category',
+          resourceId: id,
+        })
+        return
+      }
+      if (existing) {
+        await putCachedCategory(existing)
+      }
+      throw err
+    }
   }
 
   async getItems(): Promise<Item[]> {
@@ -148,42 +224,140 @@ class ApiService {
   }
 
   async createItem(data: CreateItemRequest): Promise<Item> {
-    const response = await this.request<Item>('/items', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    })
-    if (!response.data) {
-      throw new Error('Failed to create item')
+    const clientId = uuidv4()
+    const optimistic: Item = {
+      id: clientId,
+      name: data.name,
+      description: data.description,
+      categoryId: data.categoryId,
+      quantity: data.quantity,
+      skus: data.skus,
+      createdAt: nowIso(),
+      updatedAt: nowIso(),
     }
-    return response.data
+    await putCachedItem(optimistic, 'pending')
+
+    try {
+      const response = await this.request<Item>('/items', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      })
+      if (!response.data) {
+        throw new Error('Failed to create item')
+      }
+      await db.transaction('rw', db.items, db.mutations, async () => {
+        await deleteCachedItem(clientId)
+        await putCachedItem(response.data!)
+        await rewriteClientId(clientId, response.data!.id, 'item')
+      })
+      return response.data
+    } catch (err) {
+      if (isNetworkError(err)) {
+        await enqueue({
+          method: 'POST',
+          url: '/items',
+          body: data,
+          resource: 'item',
+          clientId,
+        })
+        return optimistic
+      }
+      await deleteCachedItem(clientId)
+      throw err
+    }
   }
 
   async updateItem(id: string, data: UpdateItemRequest): Promise<Item> {
-    const response = await this.request<Item>(`/items/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    })
-    if (!response.data) {
-      throw new Error('Failed to update item')
+    const existing = await getCachedItem(id)
+    if (existing) {
+      await putCachedItem({ ...existing, ...data, updatedAt: nowIso() }, 'pending')
     }
-    return response.data
+
+    try {
+      const response = await this.request<Item>(`/items/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      })
+      if (!response.data) {
+        throw new Error('Failed to update item')
+      }
+      await putCachedItem(response.data)
+      return response.data
+    } catch (err) {
+      if (isNetworkError(err)) {
+        await enqueue({
+          method: 'PUT',
+          url: `/items/${id}`,
+          body: data,
+          resource: 'item',
+          resourceId: id,
+        })
+        return (await getCachedItem(id)) ?? (existing as Item)
+      }
+      throw err
+    }
   }
 
   async updateItemQuantity(id: string, data: UpdateQuantityRequest): Promise<Item> {
-    const response = await this.request<Item>(`/items/${id}/quantity`, {
-      method: 'PATCH',
-      body: JSON.stringify(data),
-    })
-    if (!response.data) {
-      throw new Error('Failed to update item quantity')
+    const existing = await getCachedItem(id)
+    if (existing) {
+      const nextQty =
+        data.operation === 'set'
+          ? data.quantity
+          : data.operation === 'add'
+            ? existing.quantity + data.quantity
+            : Math.max(0, existing.quantity - data.quantity)
+      await putCachedItem({ ...existing, quantity: nextQty, updatedAt: nowIso() }, 'pending')
     }
-    return response.data
+
+    try {
+      const response = await this.request<Item>(`/items/${id}/quantity`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      })
+      if (!response.data) {
+        throw new Error('Failed to update item quantity')
+      }
+      await putCachedItem(response.data)
+      return response.data
+    } catch (err) {
+      if (isNetworkError(err)) {
+        await enqueue({
+          method: 'PATCH',
+          url: `/items/${id}/quantity`,
+          body: data,
+          resource: 'item',
+          resourceId: id,
+        })
+        return (await getCachedItem(id)) ?? (existing as Item)
+      }
+      throw err
+    }
   }
 
   async deleteItem(id: string): Promise<void> {
-    await this.request(`/items/${id}`, {
-      method: 'DELETE',
-    })
+    const existing = await getCachedItem(id)
+    await deleteCachedItem(id)
+
+    try {
+      await this.request(`/items/${id}`, {
+        method: 'DELETE',
+      })
+    } catch (err) {
+      if (isNetworkError(err)) {
+        await enqueue({
+          method: 'DELETE',
+          url: `/items/${id}`,
+          resource: 'item',
+          resourceId: id,
+        })
+        return
+      }
+      if (existing) {
+        await putCachedItem(existing)
+      }
+      throw err
+    }
   }
 }
 

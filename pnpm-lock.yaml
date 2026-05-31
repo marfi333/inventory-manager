@@ -96,6 +96,9 @@ importers:
       tailwindcss:
         specifier: ^3.4.0
         version: 3.4.17
+      uuid:
+        specifier: ^9.0.1
+        version: 9.0.1
       vue:
         specifier: ^3.5.17
         version: 3.5.17(typescript@5.8.3)
@@ -112,6 +115,9 @@ importers:
       '@realfavicongenerator/image-adapter-node':
         specifier: ^0.8.3
         version: 0.8.3
+      '@types/uuid':
+        specifier: ^9.0.8
+        version: 9.0.8
       '@vite-pwa/assets-generator':
         specifier: ^1.0.2
         version: 1.0.2
