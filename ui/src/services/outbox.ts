@@ -101,7 +101,9 @@ export async function rewriteClientId(
           : false
       if (!ownsClientId && !urlMentions && !bodyMentions) continue
 
-      const newUrl = urlMentions ? m.url.replaceAll(clientId, serverId) : m.url
+      const newUrl = urlMentions
+        ? m.url.split(clientId).join(serverId)
+        : m.url
       const newBody =
         m.body && typeof m.body === 'object' && m.body !== null
           ? rewriteBodyIds(m.body as Record<string, unknown>, clientId, serverId)
