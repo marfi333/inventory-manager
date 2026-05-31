@@ -4,8 +4,6 @@ services:
   api:
     image: ghcr.io/marfi333/inventory-manager/api:latest
     restart: unless-stopped
-    ports:
-      - '3009:3001'
     environment:
       - NODE_ENV=production
     volumes:
@@ -18,12 +16,11 @@ services:
   ui:
     image: ghcr.io/marfi333/inventory-manager/ui:latest
     restart: unless-stopped
-    ports:
-      - '8089:8080'
     depends_on:
       - api
     networks:
       - app-network
+      - dokploy-network
     labels:
       - 'com.centurylinklabs.watchtower.enable=true'
 
@@ -46,3 +43,5 @@ volumes:
 networks:
   app-network:
     driver: bridge
+  dokploy-network:
+    external: true
