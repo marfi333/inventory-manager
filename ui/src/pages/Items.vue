@@ -177,7 +177,7 @@
 
         <div
           v-if="filteredItems.length > 0"
-          class="sticky bottom-0 z-10 flex items-center justify-between py-3 mt-4 -mx-4 -mb-4 bg-white border-t shadow-[0_-1px_2px_rgba(0,0,0,0.04)] dark:bg-slate-800 border-slate-200 dark:border-slate-700 pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+          class="sticky bottom-0 z-10 flex items-center justify-between py-3 mt-4 -mx-4 -mb-4 bg-white border-t shadow-[0_-1px_2px_rgba(0,0,0,0.04)] dark:bg-slate-800 border-slate-200 dark:border-slate-700 pl-[max(2.5rem,env(safe-area-inset-left))] pr-[max(2.5rem,env(safe-area-inset-right))] pb-[max(0.75rem,env(safe-area-inset-bottom))]"
         >
           <div class="text-sm text-slate-500 dark:text-slate-400">
             {{ (currentPage - 1) * itemsPerPage + 1 }}-{{ Math.min(currentPage * itemsPerPage, filteredItems.length) }} of {{ filteredItems.length }}
@@ -356,7 +356,6 @@
               v-model="itemForm.name"
               :invalid="!!errors.name"
               placeholder="Enter item name"
-              autofocus
               class="w-full"
               :pt="{
                 root: 'dark:bg-slate-700',
