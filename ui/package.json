@@ -24,6 +24,7 @@
   "devDependencies": {
     "@realfavicongenerator/generate-favicon": "^0.8.3",
     "@realfavicongenerator/image-adapter-node": "^0.8.3",
+    "@vite-pwa/assets-generator": "^1.0.2",
     "@vitejs/plugin-vue": "^6.0.0",
     "@vue/tsconfig": "^0.7.0",
     "typescript": "~5.8.3",
