@@ -59,7 +59,7 @@ class ApiService {
       const response = await this.request<Category[]>('/categories')
       const data = response.data || []
       await cacheCategories(data)
-      return data
+      return getCachedCategories()
     } catch (err) {
       if (isNetworkError(err)) {
         return getCachedCategories()
@@ -194,7 +194,7 @@ class ApiService {
       const response = await this.request<Item[]>('/items')
       const data = response.data || []
       await cacheItems(data)
-      return data
+      return getCachedItems()
     } catch (err) {
       if (isNetworkError(err)) {
         return getCachedItems()

@@ -43,10 +43,11 @@
         </div>
 
         <div
-          v-if="m.status === 'failed' && m.id !== undefined"
+          v-if="(m.status === 'failed' || m.status === 'pending') && m.id !== undefined"
           class="flex items-center gap-2 flex-shrink-0"
         >
           <Button
+            v-if="m.status === 'failed'"
             @click="onRetry(m.id)"
             size="small"
             severity="secondary"
