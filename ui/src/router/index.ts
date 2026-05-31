@@ -10,25 +10,25 @@ const router = createRouter({
       path: '/',
       name: 'Dashboard',
       component: Dashboard,
-      meta: { title: 'Dashboard - Inventory System' },
+      meta: { title: 'Dashboard - Inventory Manager' },
     },
     {
       path: '/categories',
       name: 'Categories',
       component: Categories,
-      meta: { title: 'Categories - Inventory System' },
+      meta: { title: 'Categories - Inventory Manager' },
     },
     {
       path: '/items',
       name: 'Items',
       component: Items,
-      meta: { title: 'Items - Inventory System' },
+      meta: { title: 'Items - Inventory Manager' },
     },
   ],
 })
 
 router.beforeEach((to, _, next) => {
-  document.title = (to.meta.title as string) || 'Inventory System'
+  document.title = (to.meta.title as string) || 'Inventory Manager'
   next()
 })
 

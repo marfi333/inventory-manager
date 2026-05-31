@@ -27,7 +27,7 @@ export default defineConfig({
         'apple-touch-icon-180x180.png',
       ],
       manifest: {
-        name: 'Inventory System',
+        name: 'Inventory Manager',
         short_name: 'Inventory',
         description: 'Self-hosted inventory tracking with offline support',
         theme_color: '#1e293b',

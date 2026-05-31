@@ -53,7 +53,7 @@ icon.webAppManifest.transformation = {
   imageScale: 1,
   brightness: 0,
 };
-icon.webAppManifest.name = 'Inventory System';
+icon.webAppManifest.name = 'Inventory Manager';
 icon.webAppManifest.shortName = 'Inventory';
 icon.webAppManifest.backgroundColor = BG;
 icon.webAppManifest.themeColor = THEME;
