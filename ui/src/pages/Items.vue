@@ -45,6 +45,29 @@
       </div>
     </div>
 
+    <div class="flex gap-2 overflow-x-auto pb-1 -mb-1 scrollbar-hide">
+      <button
+        @click="selectedLabelId = null"
+        :class="[
+          'shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors',
+          selectedLabelId === null
+            ? 'bg-indigo-600 text-white dark:bg-indigo-500'
+            : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600',
+        ]"
+      >All</button>
+      <button
+        v-for="label in availableLabels"
+        :key="label.id"
+        @click="selectedLabelId = label.id"
+        :class="[
+          'shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors',
+          selectedLabelId === label.id
+            ? chipClassActive(label.color)
+            : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600',
+        ]"
+      >{{ label.name }}</button>
+    </div>
+
     <div v-if="loading" class="flex items-center justify-center py-24">
       <i class="text-4xl text-indigo-600 pi pi-spinner pi-spin dark:text-indigo-400"></i>
     </div>
@@ -67,12 +90,138 @@
                 <i class="text-2xl pi pi-search text-slate-400 dark:text-slate-500"></i>
               </div>
               <p class="text-lg font-medium text-slate-900 dark:text-white">No items found</p>
-              <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">No results for "{{ searchQuery }}"</p>
-              <Button label="Clear search" icon="pi pi-times" @click="clearSearch" text class="mt-4" />
+              <p v-if="searchQuery" class="mt-1 text-sm text-slate-500 dark:text-slate-400">No results for "{{ searchQuery }}"</p>
+              <p v-else-if="selectedLabelId" class="mt-1 text-sm text-slate-500 dark:text-slate-400">No items with this label</p>
+              <Button v-if="searchQuery" label="Clear search" icon="pi pi-times" @click="clearSearch" text class="mt-4" />
+              <Button v-else-if="selectedLabelId" label="Show all" icon="pi pi-filter-slash" @click="selectedLabelId = null" text class="mt-4" />
             </div>
           </div>
 
-          <div v-else class="space-y-3">
+          <div v-else>
+          <Transition name="item-list" mode="out-in">
+          <div v-if="selectedLabelId === null && groupedItemsByLabel.length > 0" key="grouped" class="space-y-3">
+            <!-- Grouped view when "All" is selected -->
+              <div v-for="group in groupedItemsByLabel" :key="group.label.id">
+                <div class="flex items-center gap-2 mb-2">
+                  <span :class="['w-2 h-2 rounded-full', dotClass(group.label.color)]"></span>
+                  <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ group.label.name }}</span>
+                  <span class="text-[0.65rem] text-slate-400 dark:text-slate-500">{{ group.items.length }}</span>
+                </div>
+                <SwipeList
+                  :items="group.items"
+                  item-key="id"
+                  class="swipe-list"
+                >
+                  <template #default="{ item, revealed }">
+                    <div
+                      class="bg-white border rounded-lg shadow-sm dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                      :class="{ '!rounded-r-none': revealed.value === 'right' }"
+                    >
+                      <div v-if="confirmingDeleteId === item.id" class="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                        <div class="flex items-center justify-between">
+                          <span class="text-sm font-medium text-red-700 dark:text-red-300">
+                            Delete "{{ item.name }}"?
+                          </span>
+                          <div class="flex items-center space-x-2">
+                            <Button label="Cancel" size="small" text @click="cancelDelete" />
+                            <Button label="Delete" size="small" severity="danger" :loading="deleting" @click="deleteItem" />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div v-else class="p-4">
+                        <div class="flex items-center mb-2">
+                          <div class="flex items-center justify-center w-9 h-9 mr-3 rounded-lg bg-emerald-100 dark:bg-emerald-900/50">
+                            <i class="text-sm text-emerald-600 pi pi-box dark:text-emerald-400"></i>
+                          </div>
+                          <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 flex-wrap">
+                              <h3
+                                class="font-semibold text-sm text-slate-900 dark:text-white truncate"
+                                v-html="highlightSearchTerm(item.name, searchQuery)"
+                              ></h3>
+                              <SyncStatusDot
+                                :status="syncStatusMap.get(item.id)"
+                                resource="item"
+                                :resource-id="item.id"
+                              />
+                            </div>
+                            <p
+                              class="text-xs text-slate-500 dark:text-slate-400"
+                              v-html="highlightSearchTerm(getCategoryName(item.categoryId), searchQuery)"
+                            ></p>
+                          </div>
+                        </div>
+
+                        <div class="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-700 gap-2">
+                          <div class="flex items-center space-x-2 shrink-0">
+                            <Button
+                              icon="pi pi-minus"
+                              severity="secondary"
+                              size="small"
+                              @click="adjustQuantity(item, -1)"
+                              :disabled="item.quantity <= 0"
+                              class="!w-8 !h-8 !p-0"
+                            />
+                            <span
+                              class="font-semibold text-slate-900 dark:text-white min-w-[2rem] text-center transition-transform duration-300"
+                              :class="{ 'scale-125': quantityAnimatingId === item.id }"
+                            >
+                              {{ item.quantity }}
+                            </span>
+                            <Button
+                              icon="pi pi-plus"
+                              severity="secondary"
+                              size="small"
+                              @click="adjustQuantity(item, 1)"
+                              class="!w-8 !h-8 !p-0"
+                            />
+                          </div>
+
+                          <div class="flex items-center gap-2 min-w-0">
+                            <span
+                              v-if="item.skus.length > 0"
+                              class="text-xs text-slate-500 dark:text-slate-400 truncate"
+                              :title="item.skus.join(', ')"
+                            >
+                              {{ item.skus.join(', ') }}
+                            </span>
+                            <Button
+                              icon="pi pi-hashtag"
+                              severity="secondary"
+                              size="small"
+                              @click="showQuantityDialog(item)"
+                              class="!w-8 !h-8 !p-0 shrink-0"
+                              v-tooltip.left="'Manage qty'"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+
+                  <template #right="{ item, close }">
+                    <div class="flex h-full">
+                      <button
+                        @click="close(); editItem(item)"
+                        class="flex items-center justify-center w-16 bg-blue-500 text-white"
+                      >
+                        <i class="pi pi-pencil"></i>
+                      </button>
+                      <button
+                        @click="close(); confirmDelete(item)"
+                        class="flex items-center justify-center w-16 bg-red-500 text-white"
+                      >
+                        <i class="pi pi-trash"></i>
+                      </button>
+                    </div>
+                  </template>
+                </SwipeList>
+              </div>
+          </div>
+
+            <!-- Flat list when a specific label is selected -->
+            <div v-else :key="'flat-' + (selectedLabelId ?? 'all')" class="space-y-3">
             <SwipeList
               :items="paginatedItems"
               item-key="id"
@@ -191,6 +340,8 @@
                 </div>
               </template>
             </SwipeList>
+            </div>
+          </Transition>
           </div>
 
         </PullToRefresh>
@@ -584,7 +735,7 @@ import { useItemSyncStatus } from '../composables/useSyncStatusMap'
 import { apiService } from '../services/api'
 import { useLiveQuery } from '../composables/useLiveQuery'
 import { db } from '../services/db'
-import { chipClass } from '../utils/labelColors'
+import { chipClass, dotClass } from '../utils/labelColors'
 import type { Item, Category, CreateItemRequest, UpdateItemRequest, UpdateQuantityRequest } from '../types'
 import type { CachedLabel } from '../types/db'
 
@@ -620,23 +771,48 @@ const itemsPerPage = ref(10)
 
 const searchQuery = ref('')
 const searchBar = ref<HTMLElement | null>(null)
+const selectedLabelId = ref<string | null>(null)
+
+const availableLabels = computed(() => {
+  const usedIds = new Set(items.value.flatMap(i => i.labelIds ?? []))
+  return (labelsLive.value ?? []).filter(l => usedIds.has(l.id))
+})
+
+const chipClassActive = (color?: string): string => {
+  const map: Record<string, string> = {
+    slate: 'bg-slate-600 text-white dark:bg-slate-500',
+    indigo: 'bg-indigo-600 text-white dark:bg-indigo-500',
+    emerald: 'bg-emerald-600 text-white dark:bg-emerald-500',
+    amber: 'bg-amber-600 text-white dark:bg-amber-500',
+    rose: 'bg-rose-600 text-white dark:bg-rose-500',
+  }
+  return map[color ?? 'slate'] ?? map.slate
+}
+
 let onSearchScroll: (() => void) | null = null
 const filteredItems = computed(() => {
-  if (!searchQuery.value) {
-    return items.value
+  let result = items.value
+
+  if (selectedLabelId.value) {
+    result = result.filter(item => (item.labelIds ?? []).includes(selectedLabelId.value!))
   }
-  const query = searchQuery.value.toLowerCase()
-  return items.value.filter((item) => {
-    const matchesName = item.name.toLowerCase().includes(query)
-    const matchesDescription = item.description ? item.description.toLowerCase().includes(query) : false
-    const matchesSkus = item.skus.some((sku) => sku.toLowerCase().includes(query))
-    const matchesCategory = getCategoryName(item.categoryId).toLowerCase().includes(query)
-    const matchesLabels = (item.labelIds ?? []).some((lid) => {
-      const name = labelById.value.get(lid)?.name
-      return name ? name.toLowerCase().includes(query) : false
+
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase()
+    result = result.filter((item) => {
+      const matchesName = item.name.toLowerCase().includes(query)
+      const matchesDescription = item.description ? item.description.toLowerCase().includes(query) : false
+      const matchesSkus = item.skus.some((sku) => sku.toLowerCase().includes(query))
+      const matchesCategory = getCategoryName(item.categoryId).toLowerCase().includes(query)
+      const matchesLabels = (item.labelIds ?? []).some((lid) => {
+        const name = labelById.value.get(lid)?.name
+        return name ? name.toLowerCase().includes(query) : false
+      })
+      return matchesName || matchesDescription || matchesSkus || matchesCategory || matchesLabels
     })
-    return matchesName || matchesDescription || matchesSkus || matchesCategory || matchesLabels
-  })
+  }
+
+  return result
 })
 
 const totalStock = computed(() => {
@@ -645,6 +821,29 @@ const totalStock = computed(() => {
 
 watch(searchQuery, () => {
   currentPage.value = 1
+})
+
+watch(selectedLabelId, () => {
+  currentPage.value = 1
+})
+
+const groupedItemsByLabel = computed(() => {
+  if (selectedLabelId.value !== null) return []
+  const pageItems = paginatedItems.value
+  const labels = availableLabels.value
+  const groups: { label: CachedLabel; items: Item[] }[] = []
+  for (const label of labels) {
+    const labelItems = pageItems.filter(item => (item.labelIds ?? []).includes(label.id))
+    if (labelItems.length > 0) {
+      groups.push({ label, items: labelItems })
+    }
+  }
+  const labeledIds = new Set(groups.flatMap(g => g.items.map(i => i.id)))
+  const unlabeled = pageItems.filter(item => !labeledIds.has(item.id))
+  if (unlabeled.length > 0) {
+    groups.push({ label: { id: '__unlabeled__', name: 'Unlabeled', color: 'slate', createdAt: '', updatedAt: '' } as CachedLabel, items: unlabeled })
+  }
+  return groups
 })
 
 const itemForm = reactive<{
@@ -984,6 +1183,19 @@ onBeforeUnmount(() => {
     border-color: transparent;
     box-shadow: 0 6px 12px rgba(0, 0, 0, 0.12);
   }
+}
+
+.item-list-enter-active,
+.item-list-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.item-list-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+.item-list-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
 }
 
 .swipe-list :deep(.swipeout-list-item) {
