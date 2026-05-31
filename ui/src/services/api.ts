@@ -30,6 +30,8 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
 const isNetworkError = (err: unknown): boolean =>
   err instanceof TypeError || (typeof navigator !== 'undefined' && navigator.onLine === false)
 
+const isOffline = (): boolean => typeof navigator !== 'undefined' && navigator.onLine === false
+
 const nowIso = (): string => new Date(Date.now()).toISOString()
 
 class ApiService {
@@ -92,7 +94,7 @@ class ApiService {
       createdAt: nowIso(),
       updatedAt: nowIso(),
     }
-    await putCachedCategory(optimistic, 'pending')
+    await putCachedCategory(optimistic, isOffline() ? 'pending' : 'synced')
 
     try {
       const response = await this.request<Category>('/categories', {
@@ -110,6 +112,7 @@ class ApiService {
       return response.data
     } catch (err) {
       if (isNetworkError(err)) {
+        await putCachedCategory(optimistic, 'pending')
         await enqueue({
           method: 'POST',
           url: '/categories',
@@ -127,7 +130,10 @@ class ApiService {
   async updateCategory(id: string, data: UpdateCategoryRequest): Promise<Category> {
     const existing = await getCachedCategory(id)
     if (existing) {
-      await putCachedCategory({ ...existing, ...data, updatedAt: nowIso() }, 'pending')
+      await putCachedCategory(
+        { ...existing, ...data, updatedAt: nowIso() },
+        isOffline() ? 'pending' : 'synced',
+      )
     }
 
     try {
@@ -142,6 +148,9 @@ class ApiService {
       return response.data
     } catch (err) {
       if (isNetworkError(err)) {
+        if (existing) {
+          await putCachedCategory({ ...existing, ...data, updatedAt: nowIso() }, 'pending')
+        }
         await enqueue({
           method: 'PUT',
           url: `/categories/${id}`,
@@ -235,7 +244,7 @@ class ApiService {
       createdAt: nowIso(),
       updatedAt: nowIso(),
     }
-    await putCachedItem(optimistic, 'pending')
+    await putCachedItem(optimistic, isOffline() ? 'pending' : 'synced')
 
     try {
       const response = await this.request<Item>('/items', {
@@ -253,6 +262,7 @@ class ApiService {
       return response.data
     } catch (err) {
       if (isNetworkError(err)) {
+        await putCachedItem(optimistic, 'pending')
         await enqueue({
           method: 'POST',
           url: '/items',
@@ -270,7 +280,10 @@ class ApiService {
   async updateItem(id: string, data: UpdateItemRequest): Promise<Item> {
     const existing = await getCachedItem(id)
     if (existing) {
-      await putCachedItem({ ...existing, ...data, updatedAt: nowIso() }, 'pending')
+      await putCachedItem(
+        { ...existing, ...data, updatedAt: nowIso() },
+        isOffline() ? 'pending' : 'synced',
+      )
     }
 
     try {
@@ -285,6 +298,9 @@ class ApiService {
       return response.data
     } catch (err) {
       if (isNetworkError(err)) {
+        if (existing) {
+          await putCachedItem({ ...existing, ...data, updatedAt: nowIso() }, 'pending')
+        }
         await enqueue({
           method: 'PUT',
           url: `/items/${id}`,
@@ -300,14 +316,20 @@ class ApiService {
 
   async updateItemQuantity(id: string, data: UpdateQuantityRequest): Promise<Item> {
     const existing = await getCachedItem(id)
-    if (existing) {
-      const nextQty =
-        data.operation === 'set'
-          ? data.quantity
-          : data.operation === 'add'
-            ? existing.quantity + data.quantity
-            : Math.max(0, existing.quantity - data.quantity)
-      await putCachedItem({ ...existing, quantity: nextQty, updatedAt: nowIso() }, 'pending')
+    const optimistic = existing
+      ? {
+          ...existing,
+          quantity:
+            data.operation === 'set'
+              ? data.quantity
+              : data.operation === 'add'
+                ? existing.quantity + data.quantity
+                : Math.max(0, existing.quantity - data.quantity),
+          updatedAt: nowIso(),
+        }
+      : null
+    if (optimistic) {
+      await putCachedItem(optimistic, isOffline() ? 'pending' : 'synced')
     }
 
     try {
@@ -322,6 +344,9 @@ class ApiService {
       return response.data
     } catch (err) {
       if (isNetworkError(err)) {
+        if (optimistic) {
+          await putCachedItem(optimistic, 'pending')
+        }
         await enqueue({
           method: 'PATCH',
           url: `/items/${id}/quantity`,

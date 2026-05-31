@@ -5,6 +5,8 @@ import type { OutboxMutation } from '../types/db'
 import {
   deleteCachedCategory,
   deleteCachedItem,
+  getCachedCategory,
+  getCachedItem,
   putCachedCategory,
   putCachedItem,
 } from '../services/cache'
@@ -106,7 +108,8 @@ export async function drainQueue(): Promise<void> {
           }
           const message = err instanceof Error ? err.message : 'Unknown error'
           await markFailed(mutation.id, message)
-          toast.error(`Sync failed: ${describeMutation(mutation)}`, { description: message })
+          const label = await describeMutation(mutation)
+          toast.error(`Sync failed: ${label}`, { description: message })
         }
       }
 
@@ -122,14 +125,20 @@ export async function drainQueue(): Promise<void> {
   }
 }
 
-function describeMutation(mutation: OutboxMutation): string {
+async function describeMutation(mutation: OutboxMutation): Promise<string> {
   const verb =
     mutation.method === 'POST'
       ? 'create'
       : mutation.method === 'DELETE'
         ? 'delete'
         : 'update'
-  return `${verb} ${mutation.resource}`
+  const lookupId = mutation.resourceId ?? mutation.clientId
+  const name = lookupId
+    ? mutation.resource === 'item'
+      ? (await getCachedItem(lookupId))?.name
+      : (await getCachedCategory(lookupId))?.name
+    : undefined
+  return name ? `${verb} ${mutation.resource} '${name}'` : `${verb} ${mutation.resource}`
 }
 
 /**
