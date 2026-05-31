@@ -82,6 +82,14 @@ import { useDarkMode } from '../composables/useDarkMode'
 const isMobileMenuOpen = ref(false)
 const { isDarkMode, toggleDarkMode, initializeDarkMode } = useDarkMode()
 
+const EDGE_ZONE_PX = 24
+const OPEN_THRESHOLD_PX = 60
+const VERTICAL_SLOP_PX = 40
+
+let touchStartX = 0
+let touchStartY = 0
+let tracking = false
+
 const navigationItems = [
   {
     name: 'Dashboard',
@@ -110,13 +118,52 @@ const handleResize = () => {
   }
 }
 
+const onTouchStart = (e: TouchEvent) => {
+  if (window.innerWidth >= 1024) return
+  if (isMobileMenuOpen.value) return
+  const touch = e.touches[0]
+  if (!touch) return
+  if (touch.clientX > EDGE_ZONE_PX) return
+  touchStartX = touch.clientX
+  touchStartY = touch.clientY
+  tracking = true
+}
+
+const onTouchMove = (e: TouchEvent) => {
+  if (!tracking) return
+  const touch = e.touches[0]
+  if (!touch) return
+  const dx = touch.clientX - touchStartX
+  const dy = Math.abs(touch.clientY - touchStartY)
+  if (dy > VERTICAL_SLOP_PX && dy > dx) {
+    tracking = false
+    return
+  }
+  if (dx >= OPEN_THRESHOLD_PX) {
+    isMobileMenuOpen.value = true
+    tracking = false
+  }
+}
+
+const onTouchEnd = () => {
+  tracking = false
+}
+
 onMounted(() => {
   window.addEventListener('resize', handleResize)
+  window.addEventListener('touchstart', onTouchStart, { passive: true })
+  window.addEventListener('touchmove', onTouchMove, { passive: true })
+  window.addEventListener('touchend', onTouchEnd, { passive: true })
+  window.addEventListener('touchcancel', onTouchEnd, { passive: true })
   initializeDarkMode()
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
+  window.removeEventListener('touchstart', onTouchStart)
+  window.removeEventListener('touchmove', onTouchMove)
+  window.removeEventListener('touchend', onTouchEnd)
+  window.removeEventListener('touchcancel', onTouchEnd)
 })
 
 defineExpose({
