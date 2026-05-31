@@ -11,7 +11,7 @@
     </div>
 
     <div
-      class="sticky top-0 z-10 flex flex-col gap-4 p-4 bg-white border rounded-lg shadow-sm sm:flex-row sm:items-center sm:justify-between dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+      class="sticky top-[calc(env(safe-area-inset-top)+3.75rem)] lg:top-0 z-10 flex flex-col gap-4 p-4 bg-white border rounded-lg shadow-sm sm:flex-row sm:items-center sm:justify-between dark:bg-slate-800 border-slate-200 dark:border-slate-700"
     >
       <div class="flex-1 max-w-md">
         <div class="relative">
