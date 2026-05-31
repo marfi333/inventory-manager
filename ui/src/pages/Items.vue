@@ -130,7 +130,6 @@
                           @click="adjustQuantity(item, -1)"
                           :disabled="item.quantity <= 0"
                           class="!w-8 !h-8 !p-0"
-                          :pt="{ root: 'dark:bg-gray-600' }"
                         />
                         <span
                           class="font-semibold text-slate-900 dark:text-white min-w-[2rem] text-center transition-transform duration-300"
@@ -144,7 +143,6 @@
                           size="small"
                           @click="adjustQuantity(item, 1)"
                           class="!w-8 !h-8 !p-0"
-                          :pt="{ root: 'dark:bg-gray-600' }"
                         />
                       </div>
 
@@ -154,7 +152,6 @@
                         size="small"
                         @click="showQuantityDialog(item)"
                         class="!w-8 !h-8 !p-0"
-                        :pt="{ root: 'dark:bg-gray-600' }"
                         v-tooltip.left="'Manage qty'"
                       />
                     </div>
@@ -328,9 +325,6 @@
                       severity="secondary"
                       size="small"
                       v-tooltip.top="'Manage quantity'"
-                      :pt="{
-                        root: 'dark:bg-gray-600',
-                      }"
                     />
                     <Button
                       icon="pi pi-pencil"
@@ -338,9 +332,6 @@
                       severity="secondary"
                       size="small"
                       v-tooltip.top="'Edit item'"
-                      :pt="{
-                        root: 'dark:bg-gray-600',
-                      }"
                     />
                     <Button
                       icon="pi pi-trash"
@@ -1003,20 +994,8 @@ onBeforeUnmount(() => {
 </style>
 
 <style>
-.p-datatable-header-cell {
-  @apply dark:bg-slate-700/50 dark:text-slate-200;
-}
-
-.p-paginator {
-  @apply dark:bg-slate-800 dark:border-slate-600;
-}
-
 .p-row-even,
 .p-row-odd {
   background: transparent !important;
-}
-
-.p-inputtext {
-  @apply dark:bg-slate-700;
 }
 </style>

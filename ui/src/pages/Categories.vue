@@ -257,9 +257,6 @@
                       size="small"
                       @click="editCategory(data)"
                       v-tooltip.top="'Edit category'"
-                      :pt="{
-                        root: 'dark:bg-gray-600',
-                      }"
                     />
                     <Button
                       icon="pi pi-trash"
