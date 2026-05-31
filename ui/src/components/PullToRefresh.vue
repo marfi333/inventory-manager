@@ -78,13 +78,13 @@ const pullRotation = computed(() => {
 function isAtTop(): boolean {
   const el = containerRef.value
   if (!el) return false
-  return el.scrollTop <= 0
+  return el.scrollTop <= 0 && window.scrollY <= 0
 }
 
 function onTouchStart(e: TouchEvent) {
   if (refreshing.value) return
-  if (!isAtTop()) return
   if (e.touches.length !== 1) return
+  if (!isAtTop()) return
   startY.value = e.touches[0].clientY
   startX.value = e.touches[0].clientX
   tracking.value = true
