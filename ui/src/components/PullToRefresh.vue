@@ -23,6 +23,7 @@
 
     <div
       class="pull-to-refresh__content"
+      :class="{ 'pull-to-refresh__content--snapping': !pulling }"
       :style="{ transform: `translateY(${contentOffset}px)` }"
     >
       <slot />
@@ -38,9 +39,9 @@ const props = withDefaults(defineProps<{
   maxPull?: number
   activationDistance?: number
 }>(), {
-  threshold: 60,
+  threshold: 64,
   maxPull: 120,
-  activationDistance: 12
+  activationDistance: 6
 })
 
 const emit = defineEmits<{
@@ -55,9 +56,15 @@ const startY = ref(0)
 const startX = ref(0)
 const pullDistance = ref(0)
 
+const INDICATOR_HEIGHT = 40
+
+const revealedStrip = computed(() => {
+  if (refreshing.value) return props.threshold
+  return Math.min(pullDistance.value, props.maxPull)
+})
+
 const indicatorOffset = computed(() => {
-  if (refreshing.value) return props.threshold - 40
-  return Math.min(pullDistance.value, props.maxPull) - 40
+  return revealedStrip.value / 2 - INDICATOR_HEIGHT / 2
 })
 
 const indicatorOpacity = computed(() => {
@@ -65,10 +72,7 @@ const indicatorOpacity = computed(() => {
   return Math.min(pullDistance.value / props.threshold, 1)
 })
 
-const contentOffset = computed(() => {
-  if (refreshing.value) return props.threshold
-  return Math.min(pullDistance.value, props.maxPull)
-})
+const contentOffset = computed(() => revealedStrip.value)
 
 const pullRotation = computed(() => {
   if (refreshing.value) return 0
@@ -113,8 +117,12 @@ function onTouchMove(e: TouchEvent) {
     pulling.value = true
   }
 
-  // Dampen the pull distance
-  pullDistance.value = Math.max(0, (diffY - props.activationDistance) * 0.5)
+  // Dampen the pull distance (lighter near threshold, heavier past it).
+  const raw = diffY - props.activationDistance
+  const eased = raw <= props.threshold
+    ? raw * 0.7
+    : props.threshold * 0.7 + (raw - props.threshold) * 0.35
+  pullDistance.value = Math.max(0, eased)
 
   if (pullDistance.value > 0 && e.cancelable) {
     e.preventDefault()
@@ -164,14 +172,20 @@ defineExpose({ done })
   justify-content: center;
   gap: 0.5rem;
   height: 40px;
+  padding: 0 1rem;
   font-size: 0.875rem;
   color: var(--p-text-muted-color, #6b7280);
   transition: opacity 0.2s;
   pointer-events: none;
+  white-space: nowrap;
 }
 
 .pull-to-refresh__content {
-  transition: transform 0.2s ease;
+  will-change: transform;
+}
+
+.pull-to-refresh__content--snapping {
+  transition: transform 0.25s ease;
 }
 
 .pull-to-refresh__indicator i {
