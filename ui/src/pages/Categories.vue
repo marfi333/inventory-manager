@@ -277,6 +277,7 @@
     <BottomDrawer
       v-model="dialogVisible"
       :header="dialogMode === 'create' ? 'Create Category' : 'Edit Category'"
+      autoHeight
     >
       <form @submit.prevent="saveCategory" class="space-y-4">
         <div>

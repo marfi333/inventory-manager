@@ -121,8 +121,8 @@
                       </div>
                     </div>
 
-                    <div class="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-700">
-                      <div class="flex items-center space-x-2">
+                    <div class="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-700 gap-2">
+                      <div class="flex items-center space-x-2 shrink-0">
                         <Button
                           icon="pi pi-minus"
                           severity="secondary"
@@ -146,14 +146,23 @@
                         />
                       </div>
 
-                      <Button
-                        icon="pi pi-hashtag"
-                        severity="secondary"
-                        size="small"
-                        @click="showQuantityDialog(item)"
-                        class="!w-8 !h-8 !p-0"
-                        v-tooltip.left="'Manage qty'"
-                      />
+                      <div class="flex items-center gap-2 min-w-0">
+                        <span
+                          v-if="item.skus.length > 0"
+                          class="text-xs text-slate-500 dark:text-slate-400 truncate"
+                          :title="item.skus.join(', ')"
+                        >
+                          {{ item.skus.join(', ') }}
+                        </span>
+                        <Button
+                          icon="pi pi-hashtag"
+                          severity="secondary"
+                          size="small"
+                          @click="showQuantityDialog(item)"
+                          class="!w-8 !h-8 !p-0 shrink-0"
+                          v-tooltip.left="'Manage qty'"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
