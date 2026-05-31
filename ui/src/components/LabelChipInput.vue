@@ -89,7 +89,7 @@ const inputEl = ref<HTMLInputElement | null>(null)
 const menuOpen = ref(false)
 const creating = ref(false)
 
-const labels = useLiveQuery<CachedLabel[]>(() => db.labels.toArray(), [])
+const labels = useLiveQuery<CachedLabel[]>(() => db.labels.toArray())
 
 const labelById = computed(() => {
   const m = new Map<string, CachedLabel>()

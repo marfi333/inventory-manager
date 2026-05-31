@@ -593,7 +593,7 @@ import type { CachedLabel } from '../types/db'
 
 const syncStatusMap = useItemSyncStatus()
 
-const labelsLive = useLiveQuery<CachedLabel[]>(() => db.labels.toArray(), [])
+const labelsLive = useLiveQuery<CachedLabel[]>(() => db.labels.toArray())
 const labelById = computed(() => {
   const m = new Map<string, CachedLabel>()
   for (const l of labelsLive.value ?? []) m.set(l.id, l)
