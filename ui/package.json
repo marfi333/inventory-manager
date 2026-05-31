@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "favicons": "node scripts/generate-favicons.mjs"
   },
   "dependencies": {
     "@ahultgren/vue3-swipe-actions": "^0.0.6",
@@ -21,6 +22,8 @@
     "vue-sonner": "^2.0.9"
   },
   "devDependencies": {
+    "@realfavicongenerator/generate-favicon": "^0.8.3",
+    "@realfavicongenerator/image-adapter-node": "^0.8.3",
     "@vitejs/plugin-vue": "^6.0.0",
     "@vue/tsconfig": "^0.7.0",
     "typescript": "~5.8.3",
