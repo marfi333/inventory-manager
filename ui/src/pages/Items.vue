@@ -353,7 +353,7 @@
       v-model="dialogVisible"
       :header="dialogMode === 'create' ? 'Create Item' : 'Edit Item'"
     >
-      <form @submit.prevent="saveItem" class="space-y-4 p-4">
+      <form @submit.prevent="saveItem" class="space-y-4">
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
             <label for="name" class="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">Name *</label>
@@ -465,7 +465,7 @@
       </form>
 
       <template #footer>
-        <div class="flex justify-end space-x-3 p-4 border-t border-slate-200 dark:border-slate-700">
+        <div class="flex justify-end space-x-3 pt-4 border-t border-slate-200 dark:border-slate-700">
           <Button label="Cancel" icon="pi pi-times" @click="dialogVisible = false" text />
           <Button
             :label="dialogMode === 'create' ? 'Create' : 'Update'"
@@ -483,7 +483,7 @@
       header="Manage Quantity"
       autoHeight
     >
-      <div class="p-4 space-y-4">
+      <div class="space-y-4">
         <div class="flex items-center space-x-3">
           <div class="flex items-center justify-center w-10 h-10 bg-blue-100 rounded-full dark:bg-blue-900/50">
             <i class="text-blue-600 pi pi-hashtag dark:text-blue-400"></i>
