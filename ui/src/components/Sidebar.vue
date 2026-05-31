@@ -86,6 +86,20 @@ const EDGE_ZONE_PX = 24
 const OPEN_THRESHOLD_PX = 60
 const VERTICAL_SLOP_PX = 40
 
+// iOS Safari reserves the leftmost ~20px for the system swipe-back gesture.
+// In a browser tab, start the trigger zone past that reserved strip so we
+// don't fight the OS. Installed-to-homescreen (standalone) PWAs have no
+// back gesture, so the full edge is ours.
+const IOS_SAFE_INSET_PX = 20
+const isStandalone =
+  window.matchMedia?.('(display-mode: standalone)').matches ||
+  (window.navigator as Navigator & { standalone?: boolean }).standalone === true
+const isIOS =
+  /iPad|iPhone|iPod/.test(window.navigator.userAgent) ||
+  (window.navigator.platform === 'MacIntel' && window.navigator.maxTouchPoints > 1)
+const edgeStart = isIOS && !isStandalone ? IOS_SAFE_INSET_PX : 0
+const edgeEnd = isIOS && !isStandalone ? IOS_SAFE_INSET_PX + EDGE_ZONE_PX : EDGE_ZONE_PX
+
 let touchStartX = 0
 let touchStartY = 0
 let tracking = false
@@ -123,7 +137,7 @@ const onTouchStart = (e: TouchEvent) => {
   if (isMobileMenuOpen.value) return
   const touch = e.touches[0]
   if (!touch) return
-  if (touch.clientX > EDGE_ZONE_PX) return
+  if (touch.clientX < edgeStart || touch.clientX > edgeEnd) return
   touchStartX = touch.clientX
   touchStartY = touch.clientY
   tracking = true
