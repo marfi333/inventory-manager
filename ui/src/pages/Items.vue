@@ -11,7 +11,8 @@
     </div>
 
     <div
-      class="sticky top-[calc(env(safe-area-inset-top)+3.75rem)] lg:top-0 z-10 flex flex-col gap-4 p-4 bg-white border rounded-lg shadow-sm sm:flex-row sm:items-center sm:justify-between dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+      ref="searchBar"
+      class="search-bar sticky top-[calc(env(safe-area-inset-top)+3.75rem)] lg:top-0 z-10 flex flex-col gap-4 p-4 bg-white border rounded-lg shadow-sm sm:flex-row sm:items-center sm:justify-between dark:bg-slate-800 border-slate-200 dark:border-slate-700"
     >
       <div class="flex-1 max-w-md">
         <div class="relative">
@@ -552,7 +553,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, reactive, computed, watch } from 'vue'
+import { ref, onMounted, onBeforeUnmount, reactive, computed, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import Button from 'primevue/button'
 import DataTable from 'primevue/datatable'
@@ -595,6 +596,8 @@ const currentPage = ref(1)
 const itemsPerPage = ref(10)
 
 const searchQuery = ref('')
+const searchBar = ref<HTMLElement | null>(null)
+let onSearchScroll: (() => void) | null = null
 const filteredItems = computed(() => {
   if (!searchQuery.value) {
     return items.value
@@ -906,10 +909,39 @@ const highlightSearchTerm = (text: string, searchTerm: string) => {
 
 onMounted(() => {
   loadData()
+  if (searchBar.value) {
+    const bar = searchBar.value
+    onSearchScroll = () => {
+      const topPx = parseFloat(getComputedStyle(bar).top) || 0
+      const stuck = bar.getBoundingClientRect().top <= topPx + 0.5
+      bar.toggleAttribute('data-stuck', stuck)
+    }
+    window.addEventListener('scroll', onSearchScroll, { passive: true })
+    onSearchScroll()
+  }
+})
+
+onBeforeUnmount(() => {
+  if (onSearchScroll) {
+    window.removeEventListener('scroll', onSearchScroll)
+    onSearchScroll = null
+  }
 })
 </script>
 
 <style scoped>
+@media (max-width: 1023px) {
+  .search-bar {
+    transition: margin 180ms ease-out, border-radius 180ms ease-out, border-color 180ms ease-out;
+  }
+  .search-bar[data-stuck] {
+    margin-left: -1rem;
+    margin-right: -1rem;
+    border-radius: 0;
+    border-color: transparent;
+  }
+}
+
 .swipe-list :deep(.swipeout-list-item) {
   margin-bottom: 0.75rem;
   border-radius: 0.5rem;
