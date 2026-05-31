@@ -1,14 +1,17 @@
 import { onMounted, onUnmounted } from 'vue'
 import { toast } from 'vue-sonner'
-import type { Category, Item } from '../types'
+import type { Category, Item, Label } from '../types'
 import type { OutboxMutation } from '../types/db'
 import {
   deleteCachedCategory,
   deleteCachedItem,
+  deleteCachedLabel,
   getCachedCategory,
   getCachedItem,
+  getCachedLabel,
   putCachedCategory,
   putCachedItem,
+  putCachedLabel,
 } from '../services/cache'
 import { db } from '../services/db'
 import {
@@ -53,7 +56,7 @@ async function replayMutation(mutation: OutboxMutation): Promise<void> {
     return
   }
 
-  const envelope = (await response.json().catch(() => ({}))) as ApiEnvelope<Item | Category>
+  const envelope = (await response.json().catch(() => ({}))) as ApiEnvelope<Item | Category | Label>
   const serverRow = envelope.data
   if (!serverRow) return
 
@@ -65,13 +68,21 @@ async function replayMutation(mutation: OutboxMutation): Promise<void> {
       }
       await putCachedItem(serverRow as Item)
     })
-  } else {
+  } else if (mutation.resource === 'category') {
     await db.transaction('rw', db.categories, db.mutations, async () => {
       if (mutation.clientId) {
         await deleteCachedCategory(mutation.clientId)
         await rewriteClientId(mutation.clientId, serverRow.id, 'category')
       }
       await putCachedCategory(serverRow as Category)
+    })
+  } else {
+    await db.transaction('rw', db.labels, db.mutations, async () => {
+      if (mutation.clientId) {
+        await deleteCachedLabel(mutation.clientId)
+        await rewriteClientId(mutation.clientId, serverRow.id, 'label')
+      }
+      await putCachedLabel(serverRow as Label)
     })
   }
 }
@@ -143,7 +154,9 @@ async function describeMutation(mutation: OutboxMutation): Promise<string> {
   const name = lookupId
     ? mutation.resource === 'item'
       ? (await getCachedItem(lookupId))?.name
-      : (await getCachedCategory(lookupId))?.name
+      : mutation.resource === 'category'
+        ? (await getCachedCategory(lookupId))?.name
+        : (await getCachedLabel(lookupId))?.name
     : undefined
   return name ? `${verb} ${mutation.resource} '${name}'` : `${verb} ${mutation.resource}`
 }
@@ -175,16 +188,21 @@ export async function discardMutation(mutation: OutboxMutation): Promise<void> {
   if (mutation.method === 'POST' && mutation.clientId) {
     if (mutation.resource === 'item') {
       await deleteCachedItem(mutation.clientId)
-    } else {
+    } else if (mutation.resource === 'category') {
       await deleteCachedCategory(mutation.clientId)
+    } else {
+      await deleteCachedLabel(mutation.clientId)
     }
   } else if (mutation.resourceId) {
     if (mutation.resource === 'item') {
       const existing = await getCachedItem(mutation.resourceId)
       if (existing) await putCachedItem(existing, 'synced')
-    } else {
+    } else if (mutation.resource === 'category') {
       const existing = await getCachedCategory(mutation.resourceId)
       if (existing) await putCachedCategory(existing, 'synced')
+    } else {
+      const existing = await getCachedLabel(mutation.resourceId)
+      if (existing) await putCachedLabel(existing, 'synced')
     }
   }
 

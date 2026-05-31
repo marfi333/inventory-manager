@@ -1,10 +1,10 @@
-import type { Category, Item } from './index'
+import type { Category, Item, Label } from './index'
 
 export type SyncStatus = 'synced' | 'pending' | 'failed'
 
 export type MutationMethod = 'POST' | 'PUT' | 'PATCH' | 'DELETE'
 
-export type MutationResource = 'item' | 'category'
+export type MutationResource = 'item' | 'category' | 'label'
 
 export type MutationStatus = 'pending' | 'in_flight' | 'failed'
 
@@ -17,6 +17,8 @@ type LocalMeta = {
 export type CachedItem = Item & LocalMeta
 
 export type CachedCategory = Category & LocalMeta
+
+export type CachedLabel = Label & LocalMeta
 
 export type OutboxMutation = {
   id?: number

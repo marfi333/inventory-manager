@@ -103,7 +103,7 @@
                         <i class="text-sm text-emerald-600 pi pi-box dark:text-emerald-400"></i>
                       </div>
                       <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-2 flex-wrap">
                           <h3
                             class="font-semibold text-sm text-slate-900 dark:text-white truncate"
                             v-html="highlightSearchTerm(item.name, searchQuery)"
@@ -113,6 +113,14 @@
                             resource="item"
                             :resource-id="item.id"
                           />
+                          <span
+                            v-for="lid in item.labelIds"
+                            :key="lid"
+                            :class="[
+                              'inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.65rem] font-medium',
+                              chipClass(labelById.get(lid)?.color),
+                            ]"
+                          >{{ labelById.get(lid)?.name ?? '…' }}</span>
                         </div>
                         <p
                           class="text-xs text-slate-500 dark:text-slate-400"
@@ -471,6 +479,11 @@
             <Button label="Add SKU" icon="pi pi-plus" @click="addSku" text size="small" class="mt-2" />
           </div>
         </div>
+
+        <div>
+          <label class="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">Labels</label>
+          <LabelChipInput v-model="itemForm.labelIds" />
+        </div>
       </form>
 
       <template #footer>
@@ -568,12 +581,24 @@ import '@ahultgren/vue3-swipe-actions/style.css'
 import BottomDrawer from '../components/BottomDrawer.vue'
 import PullToRefresh from '../components/PullToRefresh.vue'
 import SyncStatusDot from '../components/SyncStatusDot.vue'
+import LabelChipInput from '../components/LabelChipInput.vue'
 import { useItemSyncStatus } from '../composables/useSyncStatusMap'
 import { apiService } from '../services/api'
+import { useLiveQuery } from '../composables/useLiveQuery'
+import { db } from '../services/db'
+import { chipClass } from '../utils/labelColors'
 import type { Item, Category, CreateItemRequest, UpdateItemRequest, UpdateQuantityRequest } from '../types'
+import type { CachedLabel } from '../types/db'
 
 
 const syncStatusMap = useItemSyncStatus()
+
+const labelsLive = useLiveQuery<CachedLabel[]>(() => db.labels.toArray(), [])
+const labelById = computed(() => {
+  const m = new Map<string, CachedLabel>()
+  for (const l of labelsLive.value ?? []) m.set(l.id, l)
+  return m
+})
 
 const loading = ref(true)
 const saving = ref(false)
@@ -608,7 +633,11 @@ const filteredItems = computed(() => {
     const matchesDescription = item.description ? item.description.toLowerCase().includes(query) : false
     const matchesSkus = item.skus.some((sku) => sku.toLowerCase().includes(query))
     const matchesCategory = getCategoryName(item.categoryId).toLowerCase().includes(query)
-    return matchesName || matchesDescription || matchesSkus || matchesCategory
+    const matchesLabels = (item.labelIds ?? []).some((lid) => {
+      const name = labelById.value.get(lid)?.name
+      return name ? name.toLowerCase().includes(query) : false
+    })
+    return matchesName || matchesDescription || matchesSkus || matchesCategory || matchesLabels
   })
 })
 
@@ -620,12 +649,20 @@ watch(searchQuery, () => {
   currentPage.value = 1
 })
 
-const itemForm = reactive({
+const itemForm = reactive<{
+  name: string
+  description: string
+  categoryId: string
+  quantity: number
+  skus: string[]
+  labelIds: string[]
+}>({
   name: '',
   description: '',
   categoryId: '',
   quantity: 0,
   skus: [''],
+  labelIds: [],
 })
 
 const quantityForm = reactive({
@@ -654,7 +691,11 @@ const getCategoryName = (categoryId: string) => {
 const loadData = async (options: { silent?: boolean } = {}) => {
   try {
     if (!options.silent) loading.value = true
-    const [itemsData, categoriesData] = await Promise.all([apiService.getItems(), apiService.getCategories()])
+    const [itemsData, categoriesData] = await Promise.all([
+      apiService.getItems(),
+      apiService.getCategories(),
+      apiService.getLabels(),
+    ])
     items.value = itemsData
     categories.value = categoriesData
   } catch (error) {
@@ -672,6 +713,7 @@ const showCreateDialog = () => {
   itemForm.categoryId = ''
   itemForm.quantity = 0
   itemForm.skus = ['']
+  itemForm.labelIds = []
   categorySearch.value = ''
   clearErrors()
   dialogVisible.value = true
@@ -685,6 +727,7 @@ const editItem = (item: Item) => {
   itemForm.categoryId = item.categoryId
   itemForm.quantity = item.quantity
   itemForm.skus = item.skus.length > 0 ? [...item.skus] : ['']
+  itemForm.labelIds = [...(item.labelIds ?? [])]
   categorySearch.value = categories.value.find(c => c.id === item.categoryId) || ''
   clearErrors()
   dialogVisible.value = true
@@ -744,6 +787,7 @@ const saveItem = async () => {
         categoryId: itemForm.categoryId,
         quantity: itemForm.quantity,
         skus: filteredSkus,
+        labelIds: [...itemForm.labelIds],
       }
 
       await apiService.createItem(data)
@@ -755,6 +799,7 @@ const saveItem = async () => {
         categoryId: itemForm.categoryId,
         quantity: itemForm.quantity,
         skus: filteredSkus,
+        labelIds: [...itemForm.labelIds],
       }
 
       await apiService.updateItem(selectedItem.value!.id, data)

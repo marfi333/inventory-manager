@@ -1,7 +1,16 @@
+export type Label = {
+  id: string;
+  name: string;
+  color: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type Category = {
   id: string;
   name: string;
   description?: string;
+  labelIds: string[];
   createdAt: string;
   updatedAt: string;
 };
@@ -13,18 +22,31 @@ export type Item = {
   categoryId: string;
   quantity: number;
   skus: string[];
+  labelIds: string[];
   createdAt: string;
   updatedAt: string;
+};
+
+export type CreateLabelRequest = {
+  name: string;
+  color?: string;
+};
+
+export type UpdateLabelRequest = {
+  name?: string;
+  color?: string;
 };
 
 export type CreateCategoryRequest = {
   name: string;
   description?: string;
+  labelIds?: string[];
 };
 
 export type UpdateCategoryRequest = {
   name?: string;
   description?: string;
+  labelIds?: string[];
 };
 
 export type CreateItemRequest = {
@@ -33,6 +55,7 @@ export type CreateItemRequest = {
   categoryId: string;
   quantity: number;
   skus: string[];
+  labelIds?: string[];
 };
 
 export type UpdateItemRequest = {
@@ -41,6 +64,7 @@ export type UpdateItemRequest = {
   categoryId?: string;
   quantity?: number;
   skus?: string[];
+  labelIds?: string[];
 };
 
 export type UpdateQuantityRequest = {

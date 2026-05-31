@@ -1,10 +1,13 @@
 import type {
   Category,
   Item,
+  Label,
   CreateCategoryRequest,
   UpdateCategoryRequest,
   CreateItemRequest,
   UpdateItemRequest,
+  CreateLabelRequest,
+  UpdateLabelRequest,
   UpdateQuantityRequest,
   ApiResponse,
 } from '../types'
@@ -12,15 +15,20 @@ import { v4 as uuidv4 } from 'uuid'
 import {
   cacheCategories,
   cacheItems,
+  cacheLabels,
   deleteCachedCategory,
   deleteCachedItem,
+  deleteCachedLabel,
   getCachedCategories,
   getCachedCategory,
   getCachedItem,
   getCachedItems,
   getCachedItemsByCategory,
+  getCachedLabel,
+  getCachedLabels,
   putCachedCategory,
   putCachedItem,
+  putCachedLabel,
 } from './cache'
 import { db } from './db'
 import { enqueue, rewriteClientId } from './outbox'
@@ -91,6 +99,7 @@ class ApiService {
       id: clientId,
       name: data.name,
       description: data.description,
+      labelIds: data.labelIds ?? [],
       createdAt: nowIso(),
       updatedAt: nowIso(),
     }
@@ -241,6 +250,7 @@ class ApiService {
       categoryId: data.categoryId,
       quantity: data.quantity,
       skus: data.skus,
+      labelIds: data.labelIds ?? [],
       createdAt: nowIso(),
       updatedAt: nowIso(),
     }
@@ -380,6 +390,116 @@ class ApiService {
       }
       if (existing) {
         await putCachedItem(existing)
+      }
+      throw err
+    }
+  }
+
+  async getLabels(): Promise<Label[]> {
+    try {
+      const response = await this.request<Label[]>('/labels')
+      const data = response.data || []
+      await cacheLabels(data)
+      return getCachedLabels()
+    } catch (err) {
+      if (isNetworkError(err)) {
+        return getCachedLabels()
+      }
+      throw err
+    }
+  }
+
+  async createLabel(data: CreateLabelRequest): Promise<Label> {
+    const clientId = uuidv4()
+    const optimistic: Label = {
+      id: clientId,
+      name: data.name,
+      color: data.color || 'slate',
+      createdAt: nowIso(),
+      updatedAt: nowIso(),
+    }
+    await putCachedLabel(optimistic, isOffline() ? 'pending' : 'synced')
+
+    try {
+      const response = await this.request<Label>('/labels', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      })
+      if (!response.data) throw new Error('Failed to create label')
+      await db.transaction('rw', db.labels, db.mutations, async () => {
+        await deleteCachedLabel(clientId)
+        await putCachedLabel(response.data!)
+        await rewriteClientId(clientId, response.data!.id, 'label')
+      })
+      return response.data
+    } catch (err) {
+      if (isNetworkError(err)) {
+        await putCachedLabel(optimistic, 'pending')
+        await enqueue({
+          method: 'POST',
+          url: '/labels',
+          body: data,
+          resource: 'label',
+          clientId,
+        })
+        return optimistic
+      }
+      await deleteCachedLabel(clientId)
+      throw err
+    }
+  }
+
+  async updateLabel(id: string, data: UpdateLabelRequest): Promise<Label> {
+    const existing = await getCachedLabel(id)
+    if (existing) {
+      await putCachedLabel(
+        { ...existing, ...data, updatedAt: nowIso() },
+        isOffline() ? 'pending' : 'synced',
+      )
+    }
+    try {
+      const response = await this.request<Label>(`/labels/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      })
+      if (!response.data) throw new Error('Failed to update label')
+      await putCachedLabel(response.data)
+      return response.data
+    } catch (err) {
+      if (isNetworkError(err)) {
+        if (existing) {
+          await putCachedLabel({ ...existing, ...data, updatedAt: nowIso() }, 'pending')
+        }
+        await enqueue({
+          method: 'PUT',
+          url: `/labels/${id}`,
+          body: data,
+          resource: 'label',
+          resourceId: id,
+        })
+        return (await getCachedLabel(id)) ?? (existing as Label)
+      }
+      throw err
+    }
+  }
+
+  async deleteLabel(id: string): Promise<void> {
+    const existing = await getCachedLabel(id)
+    await deleteCachedLabel(id)
+    try {
+      await this.request(`/labels/${id}`, { method: 'DELETE' })
+    } catch (err) {
+      if (isNetworkError(err)) {
+        await enqueue({
+          method: 'DELETE',
+          url: `/labels/${id}`,
+          resource: 'label',
+          resourceId: id,
+        })
+        return
+      }
+      if (existing) {
+        await putCachedLabel(existing)
       }
       throw err
     }

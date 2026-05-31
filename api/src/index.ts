@@ -4,6 +4,7 @@ import { cors } from 'hono/cors'
 import { initializeDatabase } from './database'
 import categories from './routes/categories'
 import items from './routes/items'
+import labels from './routes/labels'
 
 const app = new Hono()
 
@@ -30,6 +31,7 @@ app.get('/health', (c) => {
 
 app.route('/api/categories', categories)
 app.route('/api/items', items)
+app.route('/api/labels', labels)
 
 try {
   initializeDatabase()

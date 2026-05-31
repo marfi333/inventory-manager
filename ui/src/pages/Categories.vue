@@ -102,7 +102,7 @@
                           <i class="text-indigo-600 pi pi-folder dark:text-indigo-400"></i>
                         </div>
                         <div>
-                          <div class="flex items-center gap-2">
+                          <div class="flex items-center gap-2 flex-wrap">
                             <h3
                               class="font-semibold text-slate-900 dark:text-white"
                               v-html="highlightSearchTerm(item.name, searchQuery)"
@@ -112,6 +112,14 @@
                               resource="category"
                               :resource-id="item.id"
                             />
+                            <span
+                              v-for="lid in item.labelIds"
+                              :key="lid"
+                              :class="[
+                                'inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.65rem] font-medium',
+                                chipClass(labelById.get(lid)?.color),
+                              ]"
+                            >{{ labelById.get(lid)?.name ?? '…' }}</span>
                           </div>
                           <p class="text-sm text-slate-500 dark:text-slate-400">
                             {{ new Date(item.createdAt).toLocaleDateString() }}
@@ -310,6 +318,11 @@
             }"
           />
         </div>
+
+        <div>
+          <label class="block mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">Labels</label>
+          <LabelChipInput v-model="categoryForm.labelIds" />
+        </div>
       </form>
 
       <template #footer>
@@ -340,12 +353,24 @@ import '@ahultgren/vue3-swipe-actions/style.css'
 import BottomDrawer from '../components/BottomDrawer.vue'
 import PullToRefresh from '../components/PullToRefresh.vue'
 import SyncStatusDot from '../components/SyncStatusDot.vue'
+import LabelChipInput from '../components/LabelChipInput.vue'
 import { useCategorySyncStatus } from '../composables/useSyncStatusMap'
 import { apiService } from '../services/api'
+import { useLiveQuery } from '../composables/useLiveQuery'
+import { db } from '../services/db'
+import { chipClass } from '../utils/labelColors'
 import type { Category, CreateCategoryRequest, UpdateCategoryRequest } from '../types'
+import type { CachedLabel } from '../types/db'
 
 
 const syncStatusMap = useCategorySyncStatus()
+
+const labelsLive = useLiveQuery<CachedLabel[]>(() => db.labels.toArray(), [])
+const labelById = computed(() => {
+  const m = new Map<string, CachedLabel>()
+  for (const l of labelsLive.value ?? []) m.set(l.id, l)
+  return m
+})
 
 const loading = ref(true)
 const saving = ref(false)
@@ -360,9 +385,10 @@ const pullToRefreshRef = ref<InstanceType<typeof PullToRefresh>>()
 const currentPage = ref(1)
 const itemsPerPage = ref(10)
 
-const categoryForm = reactive({
+const categoryForm = reactive<{ name: string; description: string; labelIds: string[] }>({
   name: '',
   description: '',
+  labelIds: [],
 })
 
 const errors = reactive({
@@ -385,9 +411,14 @@ const filteredCategories = computed(() => {
     return categories.value
   }
   const query = searchQuery.value.toLowerCase()
-  return categories.value.filter(
-    (category) => category.name.toLowerCase().includes(query) || category.description?.toLowerCase().includes(query)
-  )
+  return categories.value.filter((category) => {
+    if (category.name.toLowerCase().includes(query)) return true
+    if (category.description && category.description.toLowerCase().includes(query)) return true
+    return (category.labelIds ?? []).some((lid) => {
+      const name = labelById.value.get(lid)?.name
+      return name ? name.toLowerCase().includes(query) : false
+    })
+  })
 })
 
 watch(searchQuery, () => {
@@ -397,7 +428,8 @@ watch(searchQuery, () => {
 const loadCategories = async (options: { silent?: boolean } = {}) => {
   try {
     if (!options.silent) loading.value = true
-    categories.value = await apiService.getCategories()
+    const [cats] = await Promise.all([apiService.getCategories(), apiService.getLabels()])
+    categories.value = cats
   } catch (error) {
     console.error('Error loading categories:', error)
     toast.error('Failed to load categories')
@@ -410,6 +442,7 @@ const showCreateDialog = () => {
   dialogMode.value = 'create'
   categoryForm.name = ''
   categoryForm.description = ''
+  categoryForm.labelIds = []
   errors.name = ''
   dialogVisible.value = true
 }
@@ -419,6 +452,7 @@ const editCategory = (category: Category) => {
   selectedCategory.value = category
   categoryForm.name = category.name
   categoryForm.description = category.description || ''
+  categoryForm.labelIds = [...(category.labelIds ?? [])]
   errors.name = ''
   dialogVisible.value = true
 }
@@ -449,6 +483,7 @@ const saveCategory = async () => {
       const data: CreateCategoryRequest = {
         name: categoryForm.name.trim(),
         description: categoryForm.description.trim() || undefined,
+        labelIds: [...categoryForm.labelIds],
       }
 
       await apiService.createCategory(data)
@@ -457,6 +492,7 @@ const saveCategory = async () => {
       const data: UpdateCategoryRequest = {
         name: categoryForm.name.trim(),
         description: categoryForm.description.trim() || undefined,
+        labelIds: [...categoryForm.labelIds],
       }
 
       await apiService.updateCategory(selectedCategory.value!.id, data)
