@@ -56,7 +56,8 @@
 
   /* Prevent iOS Safari from zooming the viewport when focusing a form
      control. Safari only auto-zooms when the focused input's font-size
-     is below 16px. */
+     is below 16px. !important is needed because Tailwind utilities like
+     `text-sm` sit in a later cascade layer and would otherwise win. */
   input,
   textarea,
   select,
@@ -66,6 +67,6 @@
   .p-select-label,
   .p-multiselect-label,
   .p-treeselect-label {
-    font-size: 16px;
+    font-size: 16px !important;
   }
 }
