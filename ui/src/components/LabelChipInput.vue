@@ -38,6 +38,7 @@
 
     <div
       v-if="menuOpen && (suggestions.length > 0 || canCreate)"
+      ref="menuEl"
       class="rounded-md border border-slate-200 bg-white dark:bg-slate-800 dark:border-slate-700 shadow-sm max-h-48 overflow-y-auto"
     >
       <button
@@ -65,7 +66,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { computed, ref, nextTick, watch, onMounted, onUnmounted } from 'vue'
 import { toast } from 'vue-sonner'
 import { useLiveQuery } from '../composables/useLiveQuery'
 import { db } from '../services/db'
@@ -86,6 +87,7 @@ const emit = defineEmits<{
 
 const query = ref('')
 const inputEl = ref<HTMLInputElement | null>(null)
+const menuEl = ref<HTMLElement | null>(null)
 const menuOpen = ref(false)
 const creating = ref(false)
 
@@ -175,6 +177,14 @@ function onDocClick(e: MouseEvent) {
     menuOpen.value = false
   }
 }
+
+watch(menuOpen, (open) => {
+  if (open) {
+    nextTick(() => {
+      menuEl.value?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    })
+  }
+})
 
 onMounted(() => document.addEventListener('mousedown', onDocClick))
 onUnmounted(() => document.removeEventListener('mousedown', onDocClick))
