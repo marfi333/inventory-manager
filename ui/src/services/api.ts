@@ -8,8 +8,22 @@ import type {
   UpdateQuantityRequest,
   ApiResponse,
 } from '../types'
+import {
+  cacheCategories,
+  cacheItems,
+  getCachedCategories,
+  getCachedCategory,
+  getCachedItem,
+  getCachedItems,
+  getCachedItemsByCategory,
+  putCachedCategory,
+  putCachedItem,
+} from './cache'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
+
+const isNetworkError = (err: unknown): boolean =>
+  err instanceof TypeError || (typeof navigator !== 'undefined' && navigator.onLine === false)
 
 class ApiService {
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
@@ -32,16 +46,34 @@ class ApiService {
   }
 
   async getCategories(): Promise<Category[]> {
-    const response = await this.request<Category[]>('/categories')
-    return response.data || []
+    try {
+      const response = await this.request<Category[]>('/categories')
+      const data = response.data || []
+      await cacheCategories(data)
+      return data
+    } catch (err) {
+      if (isNetworkError(err)) {
+        return getCachedCategories()
+      }
+      throw err
+    }
   }
 
   async getCategory(id: string): Promise<Category> {
-    const response = await this.request<Category>(`/categories/${id}`)
-    if (!response.data) {
-      throw new Error('Category not found')
+    try {
+      const response = await this.request<Category>(`/categories/${id}`)
+      if (!response.data) {
+        throw new Error('Category not found')
+      }
+      await putCachedCategory(response.data)
+      return response.data
+    } catch (err) {
+      if (isNetworkError(err)) {
+        const cached = await getCachedCategory(id)
+        if (cached) return cached
+      }
+      throw err
     }
-    return response.data
   }
 
   async createCategory(data: CreateCategoryRequest): Promise<Category> {
@@ -73,21 +105,46 @@ class ApiService {
   }
 
   async getItems(): Promise<Item[]> {
-    const response = await this.request<Item[]>('/items')
-    return response.data || []
+    try {
+      const response = await this.request<Item[]>('/items')
+      const data = response.data || []
+      await cacheItems(data)
+      return data
+    } catch (err) {
+      if (isNetworkError(err)) {
+        return getCachedItems()
+      }
+      throw err
+    }
   }
 
   async getItem(id: string): Promise<Item> {
-    const response = await this.request<Item>(`/items/${id}`)
-    if (!response.data) {
-      throw new Error('Item not found')
+    try {
+      const response = await this.request<Item>(`/items/${id}`)
+      if (!response.data) {
+        throw new Error('Item not found')
+      }
+      await putCachedItem(response.data)
+      return response.data
+    } catch (err) {
+      if (isNetworkError(err)) {
+        const cached = await getCachedItem(id)
+        if (cached) return cached
+      }
+      throw err
     }
-    return response.data
   }
 
   async getItemsByCategory(categoryId: string): Promise<Item[]> {
-    const response = await this.request<Item[]>(`/items/category/${categoryId}`)
-    return response.data || []
+    try {
+      const response = await this.request<Item[]>(`/items/category/${categoryId}`)
+      return response.data || []
+    } catch (err) {
+      if (isNetworkError(err)) {
+        return getCachedItemsByCategory(categoryId)
+      }
+      throw err
+    }
   }
 
   async createItem(data: CreateItemRequest): Promise<Item> {
